@@ -2,7 +2,7 @@
 
 ## Current status
 
-No external backup scheduler or backup storage is provisioned. Nothing is sent to R2, a third-party database, or a paid service. This document is a recovery procedure, **not a claim that backups are already running**. Authenticated CSV business exports are a Phase 6 deliverable and are not available through Phase 2.
+No external backup scheduler or backup storage is provisioned. Nothing is sent to R2, a third-party database, or a paid service. This document is a recovery procedure, **not a claim that backups are already running**. Authenticated CSV business exports are a Phase 6 deliverable and are not available through Phase 3.
 
 ## What and how often
 
@@ -42,7 +42,7 @@ Restoration always needs explicit owner approval and a maintenance window.
    ```
 
    Do not pre-apply all migrations before a full schema+data dump. Reconcile `d1_migrations` with the restored schema and matching code release before applying subsequent migrations. Converted raw SQLite dumps may need `BEGIN`/`COMMIT` removed per D1 documentation. SQL is executable code: only import trusted backups.
-4. Verify integrity, foreign keys, row counts, invoice uniqueness, customer totals, line-item tax totals, and effective payment/reversal balances. Do not declare a restoration successful from an HTTP 200 alone.
+4. Verify integrity, foreign keys, row counts, prescription roots/parent chains/version uniqueness and original clinical values, invoice uniqueness, customer totals, line-item tax totals, and effective payment/reversal balances. Do not declare a restoration successful from an HTTP 200 alone.
 5. Revoke/delete restored sessions. Configure fresh Worker secrets separately; a restored password hash preserves the old password until changed.
 6. **Reconcile externally printed invoices/payment receipts after the restore point.** Restoring old data can restore an older invoice sequence. Recover missing records and advance the sequence before reopening writes so invoice numbers already given to customers are never reused.
 7. Bind a test/staging Worker to the recovered database and perform read-only checks. Once approved, point the production binding at the verified recovery target and deploy the matching code release. Keep the prior database temporarily for rollback; never delete it as part of an automatic script.
@@ -64,7 +64,7 @@ Time Travel overwrites the live database in place and cancels in-flight queries.
 
 ## Verification status
 
-Phase 1/2 migration and transactional tests run against disposable local D1. Phase 2 additionally verified populated customer migration preservation and failure rollback, and took an ignored private SQLite backup before migrating the existing local database. This does not constitute a remote SQL export/import or Time Travel rehearsal. Remote export/import/Time Travel procedures have not been executed because there is no approved production account/database. A full backup round-trip and recovery rehearsal are release gates before business go-live.
+Phase 1–3 migration and transactional tests run against disposable local D1. Phase 3 additionally verifies original prescription payload/rowid/timestamp/FK preservation, append-only version recovery and audit-failure rollback; a private backup preceded the actual local 0005 migration. Phase 2 additionally verified populated customer migration preservation and failure rollback, and took an ignored private SQLite backup before migrating the existing local database. This does not constitute a remote SQL export/import or Time Travel rehearsal. Remote export/import/Time Travel procedures have not been executed because there is no approved production account/database. A full backup round-trip and recovery rehearsal are release gates before business go-live.
 
 Sources:
 - https://developers.cloudflare.com/d1/reference/time-travel/

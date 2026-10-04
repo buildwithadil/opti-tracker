@@ -2,7 +2,7 @@
 
 A single-owner optical shop application built with React/TypeScript, a Blaze REST API in Cloudflare Workers, and Cloudflare D1.
 
-**Current scope: Phases 1–2, authentication and customer management.** Customers can be created, searched, edited, archived and restored through the authenticated API. Prescriptions, purchases, payments, invoices, dashboard metrics, reports, exports and editable shop configuration remain future gated phases. They show honest phase notices, not sample records or fake totals. This is not yet a complete optical shop application or a production deployment.
+**Current scope: Phases 1–3, authentication, customers and prescriptions.** Customers can be created, searched, edited, archived and restored. Customer-linked spectacle prescriptions can be recorded, viewed and revised with immutable history. Purchases, payments, invoices, dashboard metrics, reports, exports and editable shop configuration remain future gated phases. They show honest phase notices, not sample records or fake totals. This is not yet a complete optical shop application or a production deployment.
 
 See [PROJECT_STATUS.md](PROJECT_STATUS.md) for the current verification and handoff.
 
@@ -37,9 +37,17 @@ The daily scheduled task removes only expired session/throttle/security-attempt 
 
 Open Customers to add profiles, search by literal name or mobile number, choose Active/Archived/All, sort and paginate. Indian mobile inputs such as `9876543210`, `+91 98765 43210` and `09876543210` share the canonical `+919876543210`. Arbitrary punctuation, foreign/invalid mobile structures and active duplicates are rejected.
 
-Customer profiles show contact details and registration/update dates. Archive actions preserve the record; restoration conflicts can be resolved by editing the archived phone first. Purchase/prescription sections are explicitly unavailable. See [Phase 2 report](docs/phase-two.md) for API/schema and format details.
+Customer profiles show contact details, registration/update dates and real prescription history. Archive actions preserve the record; restoration conflicts can be resolved by editing the archived phone first. Purchase history remains explicitly unavailable. See [Phase 2 report](docs/phase-two.md) for API/schema and format details.
 
 Migration `0004_customer_management.sql` is append-only and already applied to this workspace's local database. For a different populated database, take a private backup and review legacy phones first: unsupported inputs/canonical active collisions deliberately abort migration rather than merge or discard records.
+
+## Prescription management
+
+Open a customer's profile and choose **Add prescription**. OD/right and OS/left measurements are grouped separately, with diopter/degree/mm labels, dates and optional prescriber/notes. Unknown fields stay blank/null; explicit zero is retained. There is no automatic clinical calculation, transposition, quarter-diopter restriction or inferred PD.
+
+**Revise prescription** creates a new UUID linked to the previous version and requires a reason. Old rows cannot be overwritten or permanently deleted; version links and paginated history recover every original value. Archived customers retain read-only history until restored. New/revised records support spectacle prescriptions; legacy other types remain readable.
+
+Migration `0005_prescription_management.sql` adds lineage and near PD to the existing table without rebuilding it or changing downstream UUID references. All operations require the existing authenticated API and unsafe-request Origin/CSRF checks. See [Phase 3 report](docs/phase-three.md) for exact rules, precision/type limitations, endpoints and verified results.
 
 ## Quality checks
 
@@ -72,4 +80,4 @@ No automated external backup is currently configured. D1 Free Time Travel provid
 
 ## Phase reports
 
-[Phase 1](docs/phase-one.md) is the historical foundation checkpoint. [Phase 2](docs/phase-two.md) records the customer module, **536 passing workerd/D1 tests and 5 passing Chromium scenarios**, limitations and Git staging/commit commands. No remote production data has been modified, and Phase 3 has not started.
+[Phase 1](docs/phase-one.md) and [Phase 2](docs/phase-two.md) are historical checkpoints. [Phase 3](docs/phase-three.md) records prescription management, **797 passing workerd/D1 tests and 11 passing Chromium scenarios**, limitations and exact Git staging/commit commands. No remote production data has been modified, and Phase 4 has not started.

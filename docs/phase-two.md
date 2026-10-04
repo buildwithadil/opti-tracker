@@ -1,5 +1,7 @@
 # Phase 2 — Customer Management implementation report
 
+> Historical checkpoint. Current scope/results are in [PROJECT_STATUS.md](../PROJECT_STATUS.md) and the [Phase 3 report](phase-three.md).
+
 ## Outcome and scope
 
 Customer management is implemented and passes the local Phase 2 acceptance checks. Phase 1 authentication is preserved. **No Phase 3 work or remote Cloudflare operation has been performed.** This is a locally verified module, not a complete business release or production deployment.

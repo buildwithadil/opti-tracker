@@ -1,6 +1,6 @@
 # Phase 1 completion report
 
-> Historical checkpoint. For the current implemented scope, repository state and checks, see [PROJECT_STATUS.md](../PROJECT_STATUS.md) and the [Phase 2 report](phase-two.md).
+> Historical checkpoint. For the current implemented scope, repository state and checks, see [PROJECT_STATUS.md](../PROJECT_STATUS.md) and the [Phase 3 report](phase-three.md).
 
 ## Delivered scope
 

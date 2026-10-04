@@ -11,7 +11,7 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-7">
-      <PageHeader eyebrow="Phase 2" title="Workspace readiness" description="Administrator access and customer management are available. Purchases, prescriptions, payments, and reports remain planned for later phases." />
+      <PageHeader eyebrow="Phase 3" title="Workspace readiness" description="Administrator access, customer management and prescriptions are available. Purchases, payments and reports remain planned for later phases." />
       <Card>
         <CardHeader><CardTitle>Administrator access is ready</CardTitle></CardHeader>
         <CardContent className="space-y-4 text-sm leading-6 text-muted">
@@ -32,14 +32,21 @@ export function DashboardPage() {
         </CardContent>
       </Card>
       <Card>
+        <CardHeader><CardTitle>Prescription management is ready</CardTitle></CardHeader>
+        <CardContent className="space-y-4 text-sm leading-6 text-muted">
+          <p>Record supplied spectacle prescriptions from customer profiles, view paginated clinical history, and create revisions without overwriting earlier values. Unknown measurements remain blank, never inferred.</p>
+          <Link className="inline-flex rounded-md font-medium text-ink underline underline-offset-4 hover:no-underline" to="/prescriptions">Open prescriptions</Link>
+        </CardContent>
+      </Card>
+      <Card>
         <CardHeader><CardTitle>Future business modules</CardTitle></CardHeader>
         <CardContent>
           <p className="mb-4 text-sm leading-6 text-muted">These routes are included for navigation only. They do not request unavailable business APIs, display sample data, or offer record-editing forms.</p>
           <ul className="divide-y divide-line">
-            {primaryNavigation.filter((item) => item.to !== '/dashboard' && item.to !== '/customers').map((item) => (
+            {primaryNavigation.filter((item) => item.to !== '/dashboard' && item.to !== '/customers' && item.to !== '/prescriptions').map((item) => (
               <li key={item.to}>
                 <Link to={item.to} className="flex flex-wrap items-center justify-between gap-2 rounded-md px-2 py-3 text-sm font-medium text-ink hover:bg-paper">
-                  <span>{item.label}</span><span className="text-xs font-normal text-muted">Planned · not available in Phase 2</span>
+                  <span>{item.label}</span><span className="text-xs font-normal text-muted">Planned · not available in Phase 3</span>
                 </Link>
               </li>
             ))}

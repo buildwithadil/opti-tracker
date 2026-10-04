@@ -1,73 +1,95 @@
 # OptiDesk project status
 
-Last verified: 4 October 2026. This file was absent at the start of Phase 2 and is now the current handoff record.
+Last verified: 4 October 2026. Current handoff: Phase 3.
 
 ## Current stage
 
-**Phase 2 — Customer Management: implemented and locally verified.**
+**Phase 3 — Prescription Management: implemented and locally verified.**
 
-Phase 1 authentication remains functional. Phase 3 has not started. OptiDesk is not a complete optical-shop application or an approved production deployment.
+Committed Phases 1–2 remain functional. Phase 4 has not started. This is not a complete optical-shop business release or an approved production deployment.
 
 ## Delivered
 
-- Phase 1: single-owner bootstrap/login/session/logout/password change, Origin/CSRF protection, rate limiting, security headers, neutral responsive application shell.
-- Phase 2: authenticated customer creation/details/editing; canonical Indian mobile normalization; active-phone uniqueness; literal name/full-phone/partial-digit search; bounded pagination and sorting; active/archived/all filters; soft archiving and conflict-safe restoration.
-- Responsive customer table/mobile cards, inline field/conflict errors, success feedback, profiles with dates, confirmation dialogs, and unsaved-form navigation/reload protection.
-- Atomic customer/audit writes with administrator/request identity and guarded revisions. Customer records cannot be permanently deleted.
-- Purchase and prescription history sections are explicitly unavailable, not fabricated empty business history. Future module pages remain phase notices.
+- Phase 1: single-owner setup/login/session/logout/password changes, exact-Origin/CSRF protections, throttling, security headers and responsive neutral shell.
+- Phase 2: authenticated customer CRUD/search/pagination/sorting, canonical Indian mobile uniqueness, archive/restore, atomic administrator audits and responsive profiles/forms.
+- Phase 3: customer-linked spectacle prescription creation/details/history; separate OD/OS SPH/CYL/AXIS/ADD; prescription date, optional expiry/recheck, prescriber/notes, distance/near/monocular PD; exact signed decimals and explicit unknown/null values.
+- Append-only prescription revisions with root/parent/version/reason, database lineage/immutability guards, derived current/superseded status and complete paginated revision history.
+- Atomic creation/supersede/revise audits with minimal metadata, preserved original clinical values, stale-race protection and customer-context isolation.
+- Desktop/mobile create/detail/revision/history, double-submit protection and unsaved cancel/navigation/back/reload warnings.
+- Archived customers retain read-only prescriptions until restored. Purchase history and future financial/reporting modules remain explicitly unavailable.
 
-## Latest actual verification
+## Latest actual checks
+
+The complete parent-run command succeeded:
+
+```bash
+npm run check && npm run test:e2e && git diff --check && npm audit
+```
 
 | Gate | Result |
 |---|---|
-| `npm run typecheck` | Passed |
-| `npm run lint` | Passed |
-| `npm test` | **536 passed across 11 files**, actual workerd/D1 |
-| `npm run test:e2e` | **5 passed**, real local Worker/D1 and Chromium; authentication + desktop/mobile customer CRUD/search/archive/restore/conflicts/dirty forms |
-| `npm run build` | Passed |
-| `npm audit` | **0 vulnerabilities reported** |
+| TypeScript | Passed |
+| ESLint | Passed |
+| Actual workerd/D1 tests | **797 passed across 15 files**, including all original 536 tests |
+| Full real-backend Chromium suite | **11 passed**, including Phase 1/2 regressions and six desktop/mobile prescription cases |
+| Production build | Passed |
+| Dependency audit | **0 vulnerabilities reported** |
 | `git diff --check` | Passed |
-| `npm run db:migrate:local` | Applied `0004_customer_management.sql`; repeat run had no pending migrations |
-| Local preservation verification | Owner, private secrets, 0001–0003 and all unrelated application rows unchanged; foreign keys clean |
+| Existing local D1 migration | `0005_prescription_management.sql` applied (14 commands); repeat had no pending migrations |
+| Preservation verification | Baseline rows/owner/secrets/0001–0004 intact; foreign keys clean; interim customer addition retained |
 
-The existing local D1 owner count remains one and customer count remains zero; no browser-test data was copied into that database. An ignored private SQLite backup was taken before the local migration. All original migrations are retained unchanged.
+Populated migration, independent FK/index/lineage checks, all-column/no-op immutability, audit-failure rollback, concurrent same-parent revisions, archived-customer races, list/history snapshots, optional/null/zero/signed values, date/axis validation, and mismatched customer context passed. Browser checks cover full lifecycle, original-value recovery, dirty forms and >20-version pagination at page sizes 10/20/50.
+
+At preservation-check time, the existing local database had one owner, one customer and zero prescriptions/purchases/payments. The customer was added during development before the migration and was **not reset to the initial empty snapshot**. Test clinical records remain confined to disposable databases. An ignored private SQLite backup/verification record exists under `backups/phase-three-before-20261004T095532Z/`.
 
 ## Database and API
 
-Migration `0004_customer_management.sql` reconciles the existing `customers` table to `uuid`, `name`, `phone`, `normalized_phone`, `created_at`, `updated_at`, `archived_at`; legacy optional columns are retained, with an internal `revision` added. Existing prescription/purchase foreign keys now reference `customers(uuid)` without changing stored identity values. A partial unique index on `normalized_phone WHERE archived_at IS NULL` permits archived-number reuse.
+Phase 3 appends ALTER statements to the existing prescription table; it does not rebuild it or change prior migrations. Stable `prescriptions(id)` values continue to be referenced by future purchase/item foreign keys; `customer_id` references the existing `customers(uuid)`.
+
+New fields: `root_id`, `supersedes_id`, `revision_number`, `revision_reason`, `near_pd`. A root owns its UUID, and each successor follows its same-customer parent by one version. Unique successor/root-version slots and insert guards prevent branches/cycles/reassignment; all prescription rows reject UPDATE/DELETE. Legacy payloads and timestamps are preserved verbatim.
 
 Authenticated APIs:
-- `GET /api/customers`
-- `POST /api/customers`
-- `GET /api/customers/:uuid`
-- `PATCH /api/customers/:uuid`
-- `DELETE /api/customers/:uuid` — **archive only**, never hard delete
-- `POST /api/customers/:uuid/restore`
+- `GET /api/customers/:customerUuid/prescriptions`
+- `POST /api/customers/:customerUuid/prescriptions`
+- `GET /api/customers/:customerUuid/prescriptions/:prescriptionUuid`
+- `PATCH /api/customers/:customerUuid/prescriptions/:prescriptionUuid` — inserts a replacement, HTTP 201
+- `GET /api/customers/:customerUuid/prescriptions/:prescriptionUuid/history`
 
-See [Phase 2 report](docs/phase-two.md) for contracts, migration details, tests, and limitations.
+Each item/history/revision query binds both UUIDs. API JSON aliases the established DB `id`/`customer_id` fields as `uuid`/`customer_uuid`. Existing customer/auth endpoints remain unchanged.
 
-## Remaining risks and limits
+## Validation and clinical scope
 
-- Cloudflare Free-plan deployed PBKDF2 CPU compliance remains unmeasured. No hashing work factor was lowered.
-- Remote backup/restore rehearsal and complete business acceptance remain release gates.
-- Name search uses SQLite's ASCII case-insensitive behavior; non-ASCII case folding/diacritic-insensitive search is not implemented. Substring searches/counts can scan candidate rows and consume D1 quotas despite bounded returned pages.
-- Mobile normalization checks Indian number structure, not whether a number is assigned/reachable. Only documented grouping/prefix forms are accepted; no OTP/SMS service is introduced.
-- Populated migration deliberately aborts for malformed legacy phones or active canonical duplicates rather than silently dropping/merging records. Resolve such data through an approved maintenance procedure before migrating another database.
-- Nonblocking package sourcemap and >500 kB client-chunk build warnings are recorded in the Phase 2 report.
-- Browser verification is Chromium, at 1440×960 and 390×844; this is not a cross-browser certification.
+- New prescription date required; optional expiry cannot precede it.
+- Blank/omitted/null measurements remain unknown; explicit zero is retained.
+- SPH/CYL/ADD accept signed exact decimal input, up to two fractional digits and six whole digits as a technical encoding bound—not a clinical normal range. Excess precision is rejected, not rounded.
+- Optional AXIS is an integer 0–180, matching the existing schema. CYL/AXIS pairing is not forced.
+- PD is an optional positive decimal in mm. Typical adult/child ranges, near subtraction and monocular sums are not inferred/enforced.
+- Revisions require a reason and preserve earlier immutable rows.
+- New structured entries/revisions support spectacle prescriptions. Legacy contact-lens/other records remain readable; specialized fitting/structured prism fields are outside scope.
+- “Current” means latest within a chain, not a clinical recommendation or expiry approval. Owner/optometrist review is needed before real clinical use and before broadening supported precision/types.
+
+## Remaining risks
+
+- Existing Cloudflare Free-plan deployed PBKDF2 CPU compliance and remote backup/restore rehearsal remain unverified; no work factor was lowered.
+- Existing name-search Unicode/candidate-scan and finite shared quota limitations remain.
+- Nonblocking Blaze sourcemap and >500 kB client-chunk build warnings remain documented.
+- Only Chromium at desktop/mobile viewports was run; broader browsers/devices are not certified.
+- Original erroneous clinical values cannot be erased through normal module operations. Broader precision, retention/correction policy and specialized optical fields need explicit review.
+- No API idempotency keys/automatic independent-root deduplication are added; real UI submission locks are implemented.
 
 ## Not performed
 
-No remote Cloudflare provisioning, migration, export, restore, deployment, paid-service activation, image upload, R2 integration, secret regeneration, or Git commit occurred during Phase 2. The user's pre-existing development server was left running; test servers are stopped.
+No remote provisioning/migration/export/restore/deployment, paid-service activation, dependency addition, image upload, R2/external storage, secret regeneration, local DB reset or Git commit occurred. Authentication code and `.dev.vars` files are unchanged. The pre-existing user dev server was left running; test servers stopped.
 
-## Next phase — not started
+## Stop condition
 
-Phase 3: prescription management, only after a separate request. Purchases, payments, invoice generation, taxes, metrics, reports, exports, and editable shop settings remain future phases.
+**Phase 3 only. Phase 4 has not started and requires explicit approval.** Purchases, payments, invoices, taxes, financial metrics, reports, exports and editable shop settings remain future phases.
 
 ## Documentation
 
 - [Architecture](docs/architecture.md)
-- [Phase 1 report — historical checkpoint](docs/phase-one.md)
-- [Phase 2 report](docs/phase-two.md)
+- [Phase 1 — historical](docs/phase-one.md)
+- [Phase 2 — historical](docs/phase-two.md)
+- [Phase 3 implementation report](docs/phase-three.md)
 - [Deployment prerequisites](docs/deployment.md)
 - [Backup/restore runbook](docs/backup-and-restore.md)

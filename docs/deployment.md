@@ -1,6 +1,6 @@
 # Deployment prerequisites — not yet executed
 
-OptiDesk Phases 1–2 are locally verified. A complete business release and production deployment have not been approved or performed.
+OptiDesk Phases 1–3 are locally verified. A complete business release and production deployment have not been approved or performed.
 
 ## Before any remote operation
 
@@ -42,7 +42,9 @@ There is no public registration or automatic email/SMS password reset integratio
 
 After approval and a fresh independent database export, review all active and archived legacy customer phone values before applying 0004. Unsupported formats or canonical active-number collisions deliberately abort it; do not skip constraints or merge/delete records to force a migration.
 
-Migration/deployment commands (not executed remotely during Phase 2):
+Phase 3's 0005 migration preserves existing prescription payloads/UUID references and adds irreversible ordinary-application UPDATE/DELETE guards. Review clinical precision/type/retention needs and backups before applying to another populated database. Revisions append replacement rows; there is no hard-delete maintenance UI.
+
+Migration/deployment commands (not executed remotely through Phase 3):
 
 ```bash
 npx wrangler d1 migrations list <approved-database-name> --remote

@@ -2,7 +2,7 @@
 
 ## Repository assessment
 
-The requested directory was initially empty apart from harness metadata; it was not then a Git repository. By Phase 2, Phase 1 was committed and Git was clean before edits. The local D1 has an existing owner account, preserved during the Phase 2 migration. There is no existing production database in this workspace. No remote migration, account provisioning, production deployment, or restore has been performed.
+The requested directory was initially empty apart from harness metadata; it was not then a Git repository. By Phase 3, Phases 1–2 were committed and Git was clean at `f5a9a85` before edits. The local D1 owner and customer records are preserved through local migrations; new interim customer activity is not reset to an older snapshot. There is no existing production database in this workspace. No remote migration, account provisioning, production deployment, or restore has been performed.
 
 ## Deployment unit
 
@@ -21,11 +21,11 @@ src/                    React application
   lib/                  In-memory API client, formatting, navigation
 worker/
   index.ts              Central authentication/security/error boundary
-  routes/               Blaze auth and customer route registration
-  validators/           Strict backend Zod schemas and list-query parsing
-  services/             Atomic login throttle and revision-safe customer/audit writes
+  routes/               Blaze auth, customer and prescription registration
+  validators/           Strict backend path/query schemas
+  services/             Atomic throttle/customer audits and append-only prescription writes
   lib/                  Web Crypto, HTTP, D1 and money helpers
-shared/                 Customer contract and strict Indian mobile normalization
+shared/                 Customer/prescription contracts, phone and clinical validation
 migrations/             Append-only SQL migration files
 public/_headers         Security headers for assets served without the Worker
 test/                   Workerd/D1 integration and utility tests
@@ -35,13 +35,14 @@ docs/                   Architecture, phase reports, deployment/recovery runbook
 
 ## Data relationships
 
-Existing 0001/0002 migrations created the business foundation; 0003 adds integrity corrections. Phase 2 appends 0004 to reconcile customer names/required canonical phones while preserving existing records and child foreign keys. Previously applied migrations remain unchanged.
+Existing 0001/0002 migrations created the business foundation; 0003 adds integrity corrections. Phase 2 appends 0004 to reconcile customer names/required canonical phones while preserving existing records and child foreign keys. Phase 3 appends 0005 with prescription lineage/near-PD fields and immutable-row guards, without rebuilding the prescription table. Previously applied migrations remain unchanged.
 
 - `admin_users` has one enforced singleton owner. The initial schema contains a legacy role column, but migrations restrict it to owner and neither UI nor API implements roles/staff.
 - Owner → many `sessions`. Only HMAC token hashes are stored. The cookie token is 256 random bits. Twelve-hour absolute expiration; logout revokes the current session, password change revokes every active session.
 - One `shop_settings` row stores identity, optional GSTIN, invoice format/counter, INR currency, default tax configuration, and footer.
 - Customer → many prescriptions and purchases. Customer identity is `uuid`; existing child `customer_id` foreign keys now reference `customers(uuid)`. The partial index on canonical `normalized_phone` applies only where `archived_at IS NULL`. Equivalent Indian mobile inputs cannot bypass active uniqueness, and archived numbers can be reused. Customers are never automatically merged or permanently deleted.
-- Purchase → many line items and payments; optional prescription reference. Payments must reference the purchase's customer.
+- Customer → multiple prescription roots and immutable linked versions. Existing `prescriptions(id)` stays stable, with `customer_id` referencing `customers(uuid)`; JSON exposes UUID aliases. Each chain has one current head, not one clinically approved prescription per customer.
+- Purchase → many line items and payments; optional reference to a specific immutable prescription version. Payments must reference the purchase's customer.
 - Payment → many reversal events. The full adjustment/refund semantics are a Phase 5 gate, not currently exposed.
 - Audit events are append-only with update/delete guards.
 - `auth_rate_limits` holds HMAC-scoped short-lived throttle counters.
@@ -68,7 +69,17 @@ Customer mutation, administrator/request-associated audit and persisted response
 
 The requested customer columns are physically present and required, with legacy optional fields retained. New migration 0004 uses staged rebuilding under deferred foreign keys and preserves IDs, rowids, timestamps, optional fields and children. Unsupported/colliding legacy phones cause a full rollback, not silent data remediation. Actual local application and populated disposable-D1 migration/failure tests passed.
 
-Frontend customer routes provide table/mobile cards, search/filter/sort/pagination, forms, profiles and native dialogs. The existing App route tree/session guards are retained, with a data-router bootstrap for unsaved-navigation blockers. Reload uses `beforeunload`; no draft/customer data is stored in browser persistence. Purchase/prescription histories remain explicit unavailable states. See [Phase 2 report](phase-two.md) and [current project status](../PROJECT_STATUS.md).
+Frontend customer routes provide table/mobile cards, search/filter/sort/pagination, forms, profiles and native dialogs. The existing App route tree/session guards are retained, with a data-router bootstrap for unsaved-navigation blockers. Reload uses `beforeunload`; no draft/customer data is stored in browser persistence. Purchase history remains an explicit unavailable state; Phase 3 now provides real prescription history. See [Phase 2 report](phase-two.md) and [current project status](../PROJECT_STATUS.md).
+
+## Phase 3 prescription architecture
+
+The existing prescription table is retained, including legacy clinical text/date/status/actor fields and downstream invoice-item references. New root/parent/revision/reason/near-PD columns plus unique successor/root-version indexes and lineage guards produce linear same-customer chains. Original rows reject UPDATE/DELETE, including no-op updates. Superseded status/replacement/time are derived from a child, never written over the old version. Original timestamps remain intact; the replacement records the edit time.
+
+All prescription routes are nested under an existing customer UUID. Item/history/revision lookups bind both UUIDs; mismatched context returns safe 404. The existing Blaze boundary supplies administrator authentication and unsafe-request Origin/CSRF protections. New root+audit+response and replacement+supersede/revise audits+response are atomic prepared-SQL D1 batches, with customer/current-parent checks inside the write transaction. Audit metadata avoids duplicating clinical values/notes/contact details; recovery comes from immutable versions.
+
+Shared Zod validation stores optional exact decimal strings/nulls, preserving unknown versus explicit zero. Signed SPH/CYL/ADD use diopters; AXIS is optional 0–180 degrees under the established schema; supplied positive distance/near/monocular PD uses mm. Required real prescription dates and optional nonpreceding expiry/recheck dates are validated. No quarter-step rule, typical-age PD range, clinical recommendation or inferred measurement is introduced. New entries/revisions support spectacle prescriptions; legacy other types remain readable. Two fractional digits/six whole digits are an explicit technical encoding bound; higher-precision legacy text is not silently normalized.
+
+Customer profiles/details expose paginated history and immutable original/replacement links. Native dirty-form protections and in-memory query/CSRF conventions are reused; there is no browser persistence, upload or external service. `/prescriptions` guides the owner to an existing customer. Purchases/payments/invoices/reports remain deferred. See [Phase 3 report](phase-three.md) for clinical references, schema, endpoints, tests and limitations.
 
 ## Verification and delivery gates
 

@@ -55,7 +55,7 @@ describe('populated 0001..0003 to 0004 migration on real D1', () => {
     const protectedTables = ['admin_users', 'prescriptions', 'purchases', 'purchase_items', 'payments', 'audit_logs']
     const protectedRows = await Promise.all(protectedTables.map(rows))
 
-    await applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS)
+    await applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS.slice(0, 4))
     const migrated = await rows('customers')
     expect(migrated).toHaveLength(40)
     migrated.forEach((row, index) => {
@@ -76,7 +76,7 @@ describe('populated 0001..0003 to 0004 migration on real D1', () => {
     }
     expect(await count('d1_migrations')).toBe(4)
     expect((await bindings.DB.prepare('PRAGMA foreign_key_check').all()).results).toEqual([])
-    await applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS)
+    await applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS.slice(0, 4))
     expect(await rows('customers')).toEqual(migrated)
   })
 
@@ -85,7 +85,7 @@ describe('populated 0001..0003 to 0004 migration on real D1', () => {
     await bindings.DB.prepare("INSERT INTO customers(id,full_name,phone) VALUES ('invalid','Must preserve',?)").bind(phone).run()
     await bindings.DB.prepare("INSERT INTO prescriptions(id,customer_id) VALUES ('rx','invalid')").run()
     const original = await rows('customers')
-    await expect(applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS)).rejects.toThrow(/NOT NULL|CHECK constraint failed/iu)
+    await expect(applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS.slice(0, 4))).rejects.toThrow(/NOT NULL|CHECK constraint failed/iu)
     await assertUnchangedAfterFailure(original)
     expect(await bindings.DB.prepare('SELECT customer_id FROM prescriptions').first()).toEqual({ customer_id: 'invalid' })
   })
@@ -95,7 +95,7 @@ describe('populated 0001..0003 to 0004 migration on real D1', () => {
     await bindings.DB.prepare(`INSERT INTO customers(id,full_name,phone,deleted_at,deleted_by_admin_id)
       VALUES ('archived-invalid','Archived must survive','+1 9876543210','2025-01-01T00:00:00.000Z',?)`).bind(owner).run()
     const original = await rows('customers')
-    await expect(applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS)).rejects.toThrow(/NOT NULL|CHECK constraint failed/iu)
+    await expect(applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS.slice(0, 4))).rejects.toThrow(/NOT NULL|CHECK constraint failed/iu)
     await assertUnchangedAfterFailure(original)
   })
 
@@ -104,7 +104,7 @@ describe('populated 0001..0003 to 0004 migration on real D1', () => {
     await bindings.DB.prepare("INSERT INTO customers(id,full_name,phone) VALUES ('prefixed','Prefixed','+91 98765 43210')").run()
     await bindings.DB.prepare("INSERT INTO purchases(id,customer_id) VALUES ('sale','prefixed')").run()
     const original = await rows('customers')
-    await expect(applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS)).rejects.toThrow(/UNIQUE constraint failed: customers.normalized_phone/iu)
+    await expect(applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS.slice(0, 4))).rejects.toThrow(/UNIQUE constraint failed: customers.normalized_phone/iu)
     await assertUnchangedAfterFailure(original)
     expect(await bindings.DB.prepare('SELECT customer_id FROM purchases').first()).toEqual({ customer_id: 'prefixed' })
   })

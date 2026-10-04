@@ -1,53 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
-import { expect, test, type BrowserContext, type Page } from '@playwright/test'
-
-// auth.spec.ts runs first in the serial browser suite and changes this fixture
-// owner's password. This file also runs independently against the disposable
-// e2e DB: bootstrap only when the real session endpoint says setupRequired.
-const email = 'owner@example.test'
-const password = 'Replacement test-only passphrase 2026'
-// Reuse a genuine test-only session, not browser storage or a mocked session:
-// auth already uses three of the unchanged five/email login slots. The ignored
-// per-run artifact also survives Playwright worker restarts after a test fails;
-// Playwright clears this output directory before the next disposable DB run.
-let customerCookies: Awaited<ReturnType<BrowserContext['cookies']>> | undefined
-
-async function signIn(page: Page) {
-  const outputDirectory = test.info().project.outputDir
-  const cookieArtifact = join(outputDirectory, 'customer-test-session.json')
-  if (!customerCookies && existsSync(cookieArtifact)) {
-    customerCookies = JSON.parse(readFileSync(cookieArtifact, 'utf8')) as typeof customerCookies
-  }
-  if (customerCookies) await page.context().addCookies(customerCookies)
-  const response = await page.request.get('/api/auth/session')
-  expect(response.status()).toBe(200)
-  const session = await response.json() as { success: boolean; data: { authenticated: boolean; setupRequired?: boolean } }
-  expect(session.success).toBe(true)
-  await page.goto('/customers')
-  if (session.data.setupRequired) {
-    await expect(page.getByRole('heading', { name: 'Set up administrator access' })).toBeVisible()
-    await page.getByLabel('Administrator name', { exact: true }).fill('Test owner')
-    await page.getByLabel('Email address', { exact: true }).fill(email)
-    await page.getByLabel('Password', { exact: true }).fill(password)
-    await page.getByLabel('Confirm password', { exact: true }).fill(password)
-    await page.getByLabel('Setup secret', { exact: true }).fill('test-setup-token-for-optidesk')
-    await page.getByRole('button', { name: 'Complete one-time setup' }).click()
-    await expect(page.getByRole('heading', { name: 'Workspace readiness', exact: true })).toBeVisible()
-  } else if (!session.data.authenticated) {
-    await expect(page.getByRole('heading', { name: 'Administrator sign in' })).toBeVisible()
-    await page.getByLabel('Email address', { exact: true }).fill(email)
-    await page.getByLabel('Password', { exact: true }).fill(password)
-    await page.getByRole('button', { name: 'Sign in', exact: true }).click()
-    await expect(page.getByRole('heading', { name: 'Workspace readiness', exact: true })).toBeVisible()
-  }
-  customerCookies = await page.context().cookies()
-  mkdirSync(outputDirectory, { recursive: true })
-  writeFileSync(cookieArtifact, JSON.stringify(customerCookies), { mode: 0o600 })
-  await page.goto('/customers')
-  await expect(page.getByRole('heading', { name: 'Customers', exact: true })).toBeVisible()
-  await expect(page.getByLabel('Customer status')).toHaveValue('active')
-}
+import { expect, test, type Page } from '@playwright/test'
+import { signIn } from './session'
 
 function results(page: Page, mobile: boolean) {
   return mobile ? page.getByRole('list', { name: 'Customer search results' }) : page.getByRole('table', { name: 'Customer search results' })
@@ -129,7 +81,9 @@ for (const viewport of [
       await expect(page.getByRole('link', { name: `+91 ${firstNational.slice(0, 5)} ${firstNational.slice(5)}`, exact: true })).toHaveAttribute('href', `tel:+91${firstNational}`)
       await expect(page.getByRole('heading', { name: 'Purchase history', exact: true })).toBeVisible()
       await expect(page.getByRole('heading', { name: 'Prescription history', exact: true })).toBeVisible()
-      await expect(page.getByText('Not available in Phase 2.', { exact: false })).toHaveCount(2)
+      await expect(page.getByRole('heading', { name: 'No prescriptions yet', exact: true })).toBeVisible()
+      await expect(page.getByRole('link', { name: 'Add prescription', exact: true })).toBeVisible()
+      await expect(page.getByText('Not available in Phase 3.', { exact: false })).toHaveCount(1)
       expect(mutations.filter(request => request.path === '/api/customers' && request.method === 'POST')).toHaveLength(1)
       await page.reload()
       await expect(page.getByRole('heading', { name: originalName, exact: true })).toBeVisible()
@@ -159,7 +113,7 @@ for (const viewport of [
       const response = await submit(page, 'Save changes', `/api/customers/${uuid}`, 'PATCH')
       expect((await response.json()).data).toMatchObject({ uuid, name: editedName, normalized_phone: `+91${editedNational}` })
       await expect(page.getByRole('heading', { name: editedName, exact: true })).toBeVisible()
-      await expect(page.getByRole('status')).toContainText('Customer details saved.')
+      await expect(page.getByRole('status').filter({ hasText: 'Customer details saved.' })).toContainText('Customer details saved.')
     })
 
     await test.step('duplicate active phone is a real 409 inline conflict retaining form data', async () => {
@@ -201,7 +155,7 @@ for (const viewport of [
       await expect(page.getByRole('status')).toHaveText('1 customer')
       await results(page, viewport.mobile).getByRole('link', { name: editedName, exact: true }).click()
       await confirmStatus(page, 'Restore', `/api/customers/${uuid}/restore`)
-      await expect(page.getByRole('status')).toContainText('Customer restored to the active list.')
+      await expect(page.getByRole('status').filter({ hasText: 'Customer restored to the active list.' })).toContainText('Customer restored to the active list.')
       await expect(page.getByRole('button', { name: 'Archive customer', exact: true })).toBeVisible()
     })
 

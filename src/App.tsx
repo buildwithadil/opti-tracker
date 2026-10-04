@@ -8,6 +8,8 @@ import { DashboardPage } from './pages/DashboardPage'
 import { CustomerCreatePage, CustomerEditPage } from './pages/CustomerFormPage'
 import { CustomerProfilePage } from './pages/CustomerProfilePage'
 import { CustomersPage } from './pages/CustomersPage'
+import { PrescriptionCreatePage, PrescriptionRevisePage } from './pages/PrescriptionFormPage'
+import { PrescriptionDetailPage } from './pages/PrescriptionDetailPage'
 import { PaymentsPage, PrescriptionsPage, PurchasesPage, ReportsPage } from './pages/WorkspacePages'
 import { SettingsPage } from './pages/SettingsPage'
 
@@ -42,6 +44,9 @@ export function App() {
           <Route path="customers/new" element={<CustomerCreatePage />} />
           <Route path="customers/:uuid" element={<CustomerProfilePage />} />
           <Route path="customers/:uuid/edit" element={<CustomerEditPage />} />
+          <Route path="customers/:uuid/prescriptions/new" element={<PrescriptionCreatePage />} />
+          <Route path="customers/:uuid/prescriptions/:prescriptionUuid" element={<PrescriptionDetailPage />} />
+          <Route path="customers/:uuid/prescriptions/:prescriptionUuid/revise" element={<PrescriptionRevisePage />} />
           <Route path="purchases" element={<PurchasesPage />} />
           <Route path="prescriptions" element={<PrescriptionsPage />} />
           <Route path="payments" element={<PaymentsPage />} />

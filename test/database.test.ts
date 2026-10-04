@@ -10,9 +10,9 @@ async function insertAudit(id = 'audit-1', actor: string | null = null): Promise
 }
 
 describe('real D1 migration and relational integrity', () => {
-  it('applies all four production migrations once, preserving their tables and triggers', async () => {
+  it('applies all five production migrations once, preserving their tables and triggers', async () => {
     expect(bindings.TEST_MIGRATIONS.map((migration) => migration.name)).toEqual([
-      '0001_initial.sql', '0002_business_fields.sql', '0003_phase_one_integrity.sql', '0004_customer_management.sql',
+      '0001_initial.sql', '0002_business_fields.sql', '0003_phase_one_integrity.sql', '0004_customer_management.sql', '0005_prescription_management.sql',
     ])
     const applied = await bindings.DB.prepare('SELECT name FROM d1_migrations ORDER BY name').all<{ name: string }>()
     expect(applied.results.map((row) => row.name)).toEqual(bindings.TEST_MIGRATIONS.map((migration) => migration.name))
@@ -26,11 +26,12 @@ describe('real D1 migration and relational integrity', () => {
       'admin_owner_only_insert', 'admin_owner_only_update', 'audit_logs_immutable_update',
       'audit_logs_immutable_delete', 'customers_phone_required_insert', 'customers_phone_required_update', 'customers_no_hard_delete',
       'purchases_invoice_number_immutable', 'purchases_no_hard_delete',
+      'prescriptions_lineage_insert', 'prescriptions_immutable_update', 'prescriptions_immutable_delete',
       'payments_customer_matches_purchase_insert', 'payments_customer_matches_purchase_update',
     ]))
     // The installed helper must be idempotent against the persisted migration ledger.
     await applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS)
-    expect(await count('d1_migrations')).toBe(4)
+    expect(await count('d1_migrations')).toBe(5)
     expect(await bindings.DB.prepare('PRAGMA foreign_keys').first()).toEqual({ foreign_keys: 1 })
     expect((await bindings.DB.prepare('PRAGMA foreign_key_check').all()).results).toEqual([])
   })
@@ -38,7 +39,7 @@ describe('real D1 migration and relational integrity', () => {
   it('enforces foreign keys for sessions, prescriptions, purchases, items, and audits', async () => {
     const statements = [
       bindings.DB.prepare("INSERT INTO sessions(id,admin_user_id,token_hash,expires_at) VALUES ('orphan-session','missing','hash','2099-01-01T00:00:00.000Z')"),
-      bindings.DB.prepare("INSERT INTO prescriptions(id,customer_id) VALUES ('orphan-prescription','missing')"),
+      bindings.DB.prepare("INSERT INTO prescriptions(id,customer_id,root_id) VALUES ('orphan-prescription','missing','orphan-prescription')"),
       bindings.DB.prepare("INSERT INTO purchases(id,customer_id) VALUES ('orphan-purchase','missing')"),
       bindings.DB.prepare("INSERT INTO purchase_items(id,purchase_id,description,unit_price_paise,line_total_paise) VALUES ('orphan-item','missing','Frame',100,100)"),
       bindings.DB.prepare("INSERT INTO audit_logs(id,actor_admin_user_id,action,entity_type,entity_id) VALUES ('orphan-audit','missing','create','customer','missing')"),
@@ -52,7 +53,7 @@ describe('real D1 migration and relational integrity', () => {
     await expect(bindings.DB.batch([
       bindings.DB.prepare("UPDATE customers SET name = 'Uncommitted change' WHERE uuid = 'existing'"),
       bindings.DB.prepare("INSERT INTO customers(uuid,name,phone,normalized_phone) VALUES ('new','New Customer','+91 91234 56780','+919123456780')"),
-      bindings.DB.prepare("INSERT INTO prescriptions(id,customer_id) VALUES ('invalid-prescription','missing')"),
+      bindings.DB.prepare("INSERT INTO prescriptions(id,customer_id,root_id) VALUES ('invalid-prescription','missing','invalid-prescription')"),
       bindings.DB.prepare("INSERT INTO application_metadata(id,metadata_key,metadata_value) VALUES ('later','later','must not commit')"),
     ])).rejects.toThrow(/FOREIGN KEY constraint failed/iu)
     expect(await bindings.DB.prepare("SELECT name FROM customers WHERE uuid = 'existing'").first()).toEqual({ name: 'Customer existing' })
@@ -67,7 +68,7 @@ describe('real D1 migration and relational integrity', () => {
     await bindings.DB.prepare('DELETE FROM admin_users WHERE id = ?').bind(owner).run()
     expect(await count('sessions')).toBe(0)
     await seedCustomer()
-    await bindings.DB.prepare("INSERT INTO prescriptions(id,customer_id) VALUES ('prescription','customer-1')").run()
+    await bindings.DB.prepare("INSERT INTO prescriptions(id,customer_id,root_id) VALUES ('prescription','customer-1','prescription')").run()
     await expect(bindings.DB.prepare("DELETE FROM customers WHERE uuid = 'customer-1'").run()).rejects.toThrow(/customers cannot be permanently deleted/iu)
     // The new archive-only guard rejects deletion first; retain independent FK
     // enforcement assertions by trying to orphan the same referenced key.
@@ -175,9 +176,18 @@ describe('issued invoice integrity', () => {
     await seedCustomer()
     await seedPurchase()
     await expect(bindings.DB.prepare("UPDATE purchases SET prescription_id = 'missing'").run()).rejects.toThrow(/FOREIGN KEY constraint failed/iu)
-    await bindings.DB.prepare("INSERT INTO prescriptions(id,customer_id) VALUES ('rx','customer-1')").run()
+    await bindings.DB.prepare("INSERT INTO prescriptions(id,customer_id,root_id) VALUES ('rx','customer-1','rx')").run()
     await bindings.DB.prepare("UPDATE purchases SET prescription_id = 'rx'").run()
-    await expect(bindings.DB.prepare("DELETE FROM prescriptions WHERE id = 'rx'").run()).rejects.toThrow(/FOREIGN KEY constraint failed/iu)
+    await expect(bindings.DB.prepare("DELETE FROM prescriptions WHERE id = 'rx'").run()).rejects.toThrow(/prescriptions are immutable/iu)
+    // The append-only guard fires first in Phase 3; retain the original, actual
+    // downstream FK assertion with that guard temporarily removed in test D1.
+    const trigger = await bindings.DB.prepare("SELECT sql FROM sqlite_master WHERE name = 'prescriptions_immutable_delete'").first<{ sql: string }>()
+    await bindings.DB.prepare('DROP TRIGGER prescriptions_immutable_delete').run()
+    try {
+      await expect(bindings.DB.prepare("DELETE FROM prescriptions WHERE id = 'rx'").run()).rejects.toThrow(/FOREIGN KEY constraint failed/iu)
+    } finally {
+      await bindings.DB.prepare(trigger!.sql).run()
+    }
     expect(await bindings.DB.prepare('SELECT prescription_id FROM purchases').first()).toEqual({ prescription_id: 'rx' })
   })
 

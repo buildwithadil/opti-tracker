@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { Archive, ArrowLeft, Pencil, RotateCcw } from 'lucide-react'
 import { formatIndianMobile } from '../../shared/phone'
+import { PrescriptionHistory } from '../components/PrescriptionHistory'
 import { Button } from '../components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { ConfirmationDialog } from '../components/ui/ConfirmationDialog'
@@ -51,7 +52,7 @@ export function CustomerProfilePage() {
       <PageHeader
         eyebrow="Customer profile"
         title={record.name}
-        description="Contact details and profile status. Purchase and prescription modules are not available yet."
+        description="Contact details, profile status and recorded prescription history. Purchase management is not available yet."
         actions={
           <>
             <Link to={`/customers/${record.uuid}/edit`} className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-white px-4 text-sm font-medium text-ink hover:bg-paper"><Pencil className="size-4" aria-hidden="true" />Edit customer</Link>
@@ -74,16 +75,11 @@ export function CustomerProfilePage() {
           {archived ? <p className="mt-6 border-t border-line pt-5 text-sm leading-6 text-muted">This customer is archived and excluded from the active list. The record has not been deleted. You may edit details or restore it when needed.</p> : null}
         </CardContent>
       </Card>
-      <div className="grid gap-5 md:grid-cols-2">
-        <Card>
-          <CardHeader><CardTitle>Purchase history</CardTitle></CardHeader>
-          <CardContent><p className="text-sm leading-6 text-muted">Not available in Phase 2. Purchase records will appear here when the purchase module is implemented. No purchase history or totals are loaded.</p></CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle>Prescription history</CardTitle></CardHeader>
-          <CardContent><p className="text-sm leading-6 text-muted">Not available in Phase 2. Prescription records will appear here when the prescription module is implemented. No clinical history is loaded.</p></CardContent>
-        </Card>
-      </div>
+      <PrescriptionHistory key={record.uuid} customer={record} />
+      <Card>
+        <CardHeader><CardTitle>Purchase history</CardTitle></CardHeader>
+        <CardContent><p className="text-sm leading-6 text-muted">Not available in Phase 3. Purchase records will appear here when the purchase module is implemented. No purchase history or totals are loaded.</p></CardContent>
+      </Card>
       <ConfirmationDialog
         open={confirmation !== null}
         title={confirmation === 'restore' ? 'Restore customer?' : 'Archive customer?'}
