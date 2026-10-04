@@ -1,0 +1,5 @@
+# Generate two independent values with: openssl rand -base64 32
+# Blank examples deliberately fail closed; fill only your private .dev.vars.
+SESSION_PEPPER=""
+# Set before first-run setup. Never commit actual values.
+SETUP_TOKEN=""
