@@ -2,7 +2,7 @@
 
 ## Repository assessment
 
-The requested directory was initially empty apart from harness metadata; it was not a Git repository. There is no existing production database in this workspace. No remote migration, account provisioning, production deployment, or restore has been performed.
+The requested directory was initially empty apart from harness metadata; it was not then a Git repository. By Phase 2, Phase 1 was committed and Git was clean before edits. The local D1 has an existing owner account, preserved during the Phase 2 migration. There is no existing production database in this workspace. No remote migration, account provisioning, production deployment, or restore has been performed.
 
 ## Deployment unit
 
@@ -21,10 +21,11 @@ src/                    React application
   lib/                  In-memory API client, formatting, navigation
 worker/
   index.ts              Central authentication/security/error boundary
-  routes/auth.ts        Setup, login, session, logout, password change
-  validators/           Backend Zod schemas
-  services/             Atomic login throttle
+  routes/               Blaze auth and customer route registration
+  validators/           Strict backend Zod schemas and list-query parsing
+  services/             Atomic login throttle and revision-safe customer/audit writes
   lib/                  Web Crypto, HTTP, D1 and money helpers
+shared/                 Customer contract and strict Indian mobile normalization
 migrations/             Append-only SQL migration files
 public/_headers         Security headers for assets served without the Worker
 test/                   Workerd/D1 integration and utility tests
@@ -34,12 +35,12 @@ docs/                   Architecture, phase reports, deployment/recovery runbook
 
 ## Data relationships
 
-Existing 0001/0002 migrations created the business foundation; 0003 adds integrity corrections rather than silently rewriting applied files.
+Existing 0001/0002 migrations created the business foundation; 0003 adds integrity corrections. Phase 2 appends 0004 to reconcile customer names/required canonical phones while preserving existing records and child foreign keys. Previously applied migrations remain unchanged.
 
 - `admin_users` has one enforced singleton owner. The initial schema contains a legacy role column, but migrations restrict it to owner and neither UI nor API implements roles/staff.
 - Owner → many `sessions`. Only HMAC token hashes are stored. The cookie token is 256 random bits. Twelve-hour absolute expiration; logout revokes the current session, password change revokes every active session.
 - One `shop_settings` row stores identity, optional GSTIN, invoice format/counter, INR currency, default tax configuration, and footer.
-- Customer → many prescriptions and purchases. Active phone values are unique; Phase 2 must canonicalize Indian phone formats before writes so alternate representations cannot bypass uniqueness. Customers are never automatically merged.
+- Customer → many prescriptions and purchases. Customer identity is `uuid`; existing child `customer_id` foreign keys now reference `customers(uuid)`. The partial index on canonical `normalized_phone` applies only where `archived_at IS NULL`. Equivalent Indian mobile inputs cannot bypass active uniqueness, and archived numbers can be reused. Customers are never automatically merged or permanently deleted.
 - Purchase → many line items and payments; optional prescription reference. Payments must reference the purchase's customer.
 - Payment → many reversal events. The full adjustment/refund semantics are a Phase 5 gate, not currently exposed.
 - Audit events are append-only with update/delete guards.
@@ -56,6 +57,18 @@ Passwords: native Web Crypto PBKDF2-SHA-256, 600,000 iterations, random 16-byte 
 HTTPS uses `__Host-optidesk_session`, Secure, HttpOnly, SameSite=Lax, Path=/, no Domain. Local HTTP uses `optidesk_session`. Each unsafe API request requires an exact matching Origin. Authenticated mutations also require a session-derived CSRF header; that token stays in browser memory and can be recovered through the protected session response. No auth tokens go into localStorage/sessionStorage. Unknown API paths never become SPA HTML.
 
 Login throttle reserves D1 counters atomically before password verification: five attempts per normalized email and twenty per trusted Cloudflare IP within fifteen minutes. Setup and password change have separate throttles. Raw passwords, tokens, email/IP throttle identifiers, request query strings, and D1 errors are not logged. Cloudflare observability redacts query strings and disables automatic invocation logs and traces. Login session inserts re-check the verified credential version atomically so an in-flight old-password login cannot survive a password change.
+
+## Phase 2 customer architecture
+
+The customer API exposes only identity/contact/created/updated/archive fields, never fabricated history or statistics. `GET/POST /api/customers`, `GET/PATCH/DELETE /api/customers/:uuid` and `POST /api/customers/:uuid/restore` use the same existing administrator security boundary; DELETE archives, not hard deletes.
+
+Strict create/nonempty-partial-edit schemas use `shared/phone.ts` for canonical Indian mobile structure. All SQL values are bound, sort identifiers are allowlisted, returned pages are capped at 50 records, query length/parameters are checked, and name wildcards are escaped. Exact full-phone queries use canonical lookup; digits-only partial phones and literal name substrings are supported. List/count execute in one D1 batch snapshot with stable UUID tie-breakers.
+
+Customer mutation, administrator/request-associated audit and persisted response snapshot are one atomic D1 batch. Internal revision comparisons plus conditional audit writes prevent lost concurrent writes and phantom audits; the partial unique index prevents concurrent phone collisions. Archived edits allow restoration conflicts to be resolved without changing identity. Create/update/archive/restore actions append public before/after snapshots to the existing immutable ledger.
+
+The requested customer columns are physically present and required, with legacy optional fields retained. New migration 0004 uses staged rebuilding under deferred foreign keys and preserves IDs, rowids, timestamps, optional fields and children. Unsupported/colliding legacy phones cause a full rollback, not silent data remediation. Actual local application and populated disposable-D1 migration/failure tests passed.
+
+Frontend customer routes provide table/mobile cards, search/filter/sort/pagination, forms, profiles and native dialogs. The existing App route tree/session guards are retained, with a data-router bootstrap for unsaved-navigation blockers. Reload uses `beforeunload`; no draft/customer data is stored in browser persistence. Purchase/prescription histories remain explicit unavailable states. See [Phase 2 report](phase-two.md) and [current project status](../PROJECT_STATUS.md).
 
 ## Verification and delivery gates
 
@@ -74,7 +87,7 @@ Each phase ends with a tested change report, outstanding issues, and staging/com
 
 At research time (October 2026): Workers Free 100,000 dynamic requests/day, 10 ms CPU/invocation, 128 MB isolate memory. Direct static assets are free/unlimited requests. D1 Free 5 million rows read/day, 100,000 rows written/day, 500 MB/database, 5 GB/account, 10 databases; seven-day Time Travel. Account quotas are shared with other applications. Re-check official limits before deployment.
 
-D1 `batch()` is transactional. There is no interactive JavaScript transaction spanning independent calls. Reads before a later write do not protect against races. Query/statement bounds and payload limits must be reflected in purchase item caps and bounded exports. Leading-wildcard searches can scan full tables; benchmark/query-plan checks are mandatory when customer search is implemented. Avoid FTS virtual tables until a verified SQL-export strategy is in place.
+D1 `batch()` is transactional. There is no interactive JavaScript transaction spanning independent calls. Reads before a later write do not protect against races. Query/statement bounds and payload limits must be reflected in purchase item caps and bounded exports. Customer leading-wildcard searches/counts can scan candidate rows despite bounded returned pages. SQLite query-plan and disposable 10,000-row checks do not establish deployed D1 latency/quota behavior. Name matching uses SQLite ASCII NOCASE/LIKE, not complete Unicode case folding or diacritic-insensitive search. Avoid FTS virtual tables until a verified SQL-export strategy is in place.
 
 APAC is a placement hint, not a guarantee of India-only residency. No GST legal-compliance or healthcare/privacy-compliance claim is made. Free-tier limits mean availability is not unlimited; quota exhaustion can interrupt normal use. A custom domain registration can cost money; a workers.dev deployment does not require one.
 

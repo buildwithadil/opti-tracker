@@ -48,7 +48,7 @@ function rememberSession<T extends Session>(session: T): T {
   return session
 }
 
-function csrfHeaders(): HeadersInit {
+export function csrfHeaders(): HeadersInit {
   if (!csrfToken) throw new ApiError('Your session security token is unavailable. Please sign in again.', 401)
   return { 'X-CSRF-Token': csrfToken }
 }

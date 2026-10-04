@@ -10,9 +10,9 @@ async function insertAudit(id = 'audit-1', actor: string | null = null): Promise
 }
 
 describe('real D1 migration and relational integrity', () => {
-  it('applies all three production migrations once, preserving their tables and triggers', async () => {
+  it('applies all four production migrations once, preserving their tables and triggers', async () => {
     expect(bindings.TEST_MIGRATIONS.map((migration) => migration.name)).toEqual([
-      '0001_initial.sql', '0002_business_fields.sql', '0003_phase_one_integrity.sql',
+      '0001_initial.sql', '0002_business_fields.sql', '0003_phase_one_integrity.sql', '0004_customer_management.sql',
     ])
     const applied = await bindings.DB.prepare('SELECT name FROM d1_migrations ORDER BY name').all<{ name: string }>()
     expect(applied.results.map((row) => row.name)).toEqual(bindings.TEST_MIGRATIONS.map((migration) => migration.name))
@@ -24,13 +24,13 @@ describe('real D1 migration and relational integrity', () => {
     const triggers = await bindings.DB.prepare("SELECT name FROM sqlite_master WHERE type = 'trigger'").all<{ name: string }>()
     expect(triggers.results.map((row) => row.name)).toEqual(expect.arrayContaining([
       'admin_owner_only_insert', 'admin_owner_only_update', 'audit_logs_immutable_update',
-      'audit_logs_immutable_delete', 'customers_phone_required_insert', 'customers_phone_required_update',
+      'audit_logs_immutable_delete', 'customers_phone_required_insert', 'customers_phone_required_update', 'customers_no_hard_delete',
       'purchases_invoice_number_immutable', 'purchases_no_hard_delete',
       'payments_customer_matches_purchase_insert', 'payments_customer_matches_purchase_update',
     ]))
     // The installed helper must be idempotent against the persisted migration ledger.
     await applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS)
-    expect(await count('d1_migrations')).toBe(3)
+    expect(await count('d1_migrations')).toBe(4)
     expect(await bindings.DB.prepare('PRAGMA foreign_keys').first()).toEqual({ foreign_keys: 1 })
     expect((await bindings.DB.prepare('PRAGMA foreign_key_check').all()).results).toEqual([])
   })
@@ -50,12 +50,12 @@ describe('real D1 migration and relational integrity', () => {
   it('rolls back every earlier insert and update when a later D1 batch statement fails', async () => {
     await seedCustomer('existing', '9876543210')
     await expect(bindings.DB.batch([
-      bindings.DB.prepare("UPDATE customers SET full_name = 'Uncommitted change' WHERE id = 'existing'"),
-      bindings.DB.prepare("INSERT INTO customers(id,full_name,phone) VALUES ('new','New Customer','9123456780')"),
+      bindings.DB.prepare("UPDATE customers SET name = 'Uncommitted change' WHERE uuid = 'existing'"),
+      bindings.DB.prepare("INSERT INTO customers(uuid,name,phone,normalized_phone) VALUES ('new','New Customer','+91 91234 56780','+919123456780')"),
       bindings.DB.prepare("INSERT INTO prescriptions(id,customer_id) VALUES ('invalid-prescription','missing')"),
       bindings.DB.prepare("INSERT INTO application_metadata(id,metadata_key,metadata_value) VALUES ('later','later','must not commit')"),
     ])).rejects.toThrow(/FOREIGN KEY constraint failed/iu)
-    expect(await bindings.DB.prepare("SELECT full_name FROM customers WHERE id = 'existing'").first()).toEqual({ full_name: 'Customer existing' })
+    expect(await bindings.DB.prepare("SELECT name FROM customers WHERE uuid = 'existing'").first()).toEqual({ name: 'Customer existing' })
     expect(await count('customers')).toBe(1)
     expect(await count('prescriptions')).toBe(0)
     expect(await count('application_metadata')).toBe(0)
@@ -68,9 +68,13 @@ describe('real D1 migration and relational integrity', () => {
     expect(await count('sessions')).toBe(0)
     await seedCustomer()
     await bindings.DB.prepare("INSERT INTO prescriptions(id,customer_id) VALUES ('prescription','customer-1')").run()
-    await expect(bindings.DB.prepare("DELETE FROM customers WHERE id = 'customer-1'").run()).rejects.toThrow(/FOREIGN KEY constraint failed/iu)
+    await expect(bindings.DB.prepare("DELETE FROM customers WHERE uuid = 'customer-1'").run()).rejects.toThrow(/customers cannot be permanently deleted/iu)
+    // The new archive-only guard rejects deletion first; retain independent FK
+    // enforcement assertions by trying to orphan the same referenced key.
+    await expect(bindings.DB.prepare("UPDATE customers SET uuid = 'orphan-rx' WHERE uuid = 'customer-1'").run()).rejects.toThrow(/FOREIGN KEY constraint failed/iu)
     await seedPurchase()
-    await expect(bindings.DB.prepare("DELETE FROM customers WHERE id = 'customer-1'").run()).rejects.toThrow(/FOREIGN KEY constraint failed/iu)
+    await expect(bindings.DB.prepare("DELETE FROM customers WHERE uuid = 'customer-1'").run()).rejects.toThrow(/customers cannot be permanently deleted/iu)
+    await expect(bindings.DB.prepare("UPDATE customers SET uuid = 'orphan-purchase' WHERE uuid = 'customer-1'").run()).rejects.toThrow(/FOREIGN KEY constraint failed/iu)
     expect(await count('customers')).toBe(1)
   })
 })
@@ -108,28 +112,28 @@ describe('owner and shop singletons', () => {
 describe('active customer phone integrity', () => {
   it('rejects duplicate active phones on insert and update', async () => {
     await seedCustomer()
-    await expect(seedCustomer('duplicate', '9876543210')).rejects.toThrow(/UNIQUE constraint failed: customers.phone/iu)
+    await expect(seedCustomer('duplicate', '9876543210')).rejects.toThrow(/UNIQUE constraint failed: customers.normalized_phone/iu)
     await seedCustomer('other', '9123456780')
-    await expect(bindings.DB.prepare("UPDATE customers SET phone = '9876543210' WHERE id = 'other'").run()).rejects.toThrow(/UNIQUE constraint failed: customers.phone/iu)
-    expect(await bindings.DB.prepare("SELECT phone FROM customers WHERE id = 'other'").first()).toEqual({ phone: '9123456780' })
+    await expect(bindings.DB.prepare("UPDATE customers SET phone = '+91 98765 43210', normalized_phone = '+919876543210' WHERE uuid = 'other'").run()).rejects.toThrow(/UNIQUE constraint failed: customers.normalized_phone/iu)
+    expect(await bindings.DB.prepare("SELECT phone FROM customers WHERE uuid = 'other'").first()).toEqual({ phone: '+91 91234 56780' })
     expect(await count('customers')).toBe(2)
   })
 
   it.each([null, '', '   '])('rejects missing or blank required phones on insert and update: %j', async (phone) => {
-    await expect(bindings.DB.prepare("INSERT INTO customers(id,full_name,phone) VALUES ('invalid','Customer',?)").bind(phone).run()).rejects.toThrow(/customer phone is required/iu)
+    await expect(bindings.DB.prepare("INSERT INTO customers(uuid,name,phone,normalized_phone) VALUES ('invalid','Customer',?,'+919876543210')").bind(phone).run()).rejects.toThrow(/customer phone is required/iu)
     await seedCustomer()
-    await expect(bindings.DB.prepare("UPDATE customers SET phone = ? WHERE id = 'customer-1'").bind(phone).run()).rejects.toThrow(/customer phone is required/iu)
-    expect(await bindings.DB.prepare("SELECT phone FROM customers WHERE id = 'customer-1'").first()).toEqual({ phone: '9876543210' })
+    await expect(bindings.DB.prepare("UPDATE customers SET phone = ? WHERE uuid = 'customer-1'").bind(phone).run()).rejects.toThrow(/customer phone is required/iu)
+    expect(await bindings.DB.prepare("SELECT phone FROM customers WHERE uuid = 'customer-1'").first()).toEqual({ phone: '+91 98765 43210' })
   })
 
   it('allows archived-phone reuse but prevents restoring an archived duplicate', async () => {
     const owner = await seedOwner()
     await seedCustomer()
     const archivedAt = new Date().toISOString()
-    await bindings.DB.prepare("UPDATE customers SET deleted_at = ?, deleted_by_admin_id = ? WHERE id = 'customer-1'").bind(archivedAt, owner).run()
+    await bindings.DB.prepare("UPDATE customers SET archived_at = ?, deleted_by_admin_id = ? WHERE uuid = 'customer-1'").bind(archivedAt, owner).run()
     await seedCustomer('replacement', '9876543210')
-    await expect(bindings.DB.prepare("UPDATE customers SET deleted_at = NULL, deleted_by_admin_id = NULL WHERE id = 'customer-1'").run()).rejects.toThrow(/UNIQUE constraint failed: customers.phone/iu)
-    expect(await bindings.DB.prepare("SELECT deleted_at FROM customers WHERE id = 'customer-1'").first()).toEqual({ deleted_at: archivedAt })
+    await expect(bindings.DB.prepare("UPDATE customers SET archived_at = NULL, deleted_by_admin_id = NULL WHERE uuid = 'customer-1'").run()).rejects.toThrow(/UNIQUE constraint failed: customers.normalized_phone/iu)
+    expect(await bindings.DB.prepare("SELECT archived_at FROM customers WHERE uuid = 'customer-1'").first()).toEqual({ archived_at: archivedAt })
     expect(await count('customers')).toBe(2)
   })
 })
@@ -229,10 +233,10 @@ describe('append-only audit ledger', () => {
     await seedCustomer()
     await insertAudit()
     await expect(bindings.DB.batch([
-      bindings.DB.prepare("UPDATE customers SET full_name = 'Must roll back' WHERE id = 'customer-1'"),
+      bindings.DB.prepare("UPDATE customers SET name = 'Must roll back' WHERE uuid = 'customer-1'"),
       bindings.DB.prepare("DELETE FROM audit_logs WHERE id = 'audit-1'"),
     ])).rejects.toThrow(/audit_logs are immutable/iu)
-    expect(await bindings.DB.prepare('SELECT full_name FROM customers').first()).toEqual({ full_name: 'Customer customer-1' })
+    expect(await bindings.DB.prepare('SELECT name FROM customers').first()).toEqual({ name: 'Customer customer-1' })
     expect(await count('audit_logs')).toBe(1)
   })
 })

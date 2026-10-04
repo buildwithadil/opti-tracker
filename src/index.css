@@ -63,11 +63,13 @@ select:focus-visible,
   outline-offset: 3px;
 }
 
-.mobile-navigation::backdrop {
+.mobile-navigation::backdrop,
+.confirmation-dialog::backdrop {
   background: rgb(0 0 0 / 0.3);
 }
 
-html:has(.mobile-navigation[open]) {
+html:has(.mobile-navigation[open]),
+html:has(.confirmation-dialog[open]) {
   overflow: hidden;
 }
 

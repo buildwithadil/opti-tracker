@@ -43,7 +43,10 @@ describe('credential version and API routing guards', () => {
   it('returns safe JSON API misses rather than serving the SPA or exposing future modules', async () => {
     await failure(await request('/api/customers'), 401, 'AUTH_REQUIRED')
     const owner = await setup()
-    for (const path of ['/api/customers', '/api/purchases', '/api/reports', '/api/missing']) {
+    expect(await success(await request('/api/customers', { headers: { Cookie: owner.cookie } }))).toEqual({
+      customers: [], pagination: { page: 1, pageSize: 20, total: 0, totalPages: 1 },
+    })
+    for (const path of ['/api/purchases', '/api/reports', '/api/missing']) {
       await failure(await request(path, { headers: { Cookie: owner.cookie } }), 404, 'NOT_FOUND')
     }
     await failure(await request('/api'), 404, 'NOT_FOUND')

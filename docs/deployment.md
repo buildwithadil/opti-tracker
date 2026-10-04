@@ -1,6 +1,6 @@
 # Deployment prerequisites — not yet executed
 
-OptiDesk Phase 1 is locally testable. A complete business release and production deployment have not been approved or performed.
+OptiDesk Phases 1–2 are locally verified. A complete business release and production deployment have not been approved or performed.
 
 ## Before any remote operation
 
@@ -40,7 +40,9 @@ There is no public registration or automatic email/SMS password reset integratio
 
 ## Migration and deployment sequence
 
-After approval and a fresh independent database export:
+After approval and a fresh independent database export, review all active and archived legacy customer phone values before applying 0004. Unsupported formats or canonical active-number collisions deliberately abort it; do not skip constraints or merge/delete records to force a migration.
+
+Migration/deployment commands (not executed remotely during Phase 2):
 
 ```bash
 npx wrangler d1 migrations list <approved-database-name> --remote

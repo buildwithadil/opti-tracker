@@ -4,6 +4,7 @@
 import { applyD1Migrations, env, reset, SELF, type D1Migration } from 'cloudflare:test'
 import { beforeAll, beforeEach, expect } from 'vitest'
 import type { Env } from '../worker/types'
+import { formatIndianMobile, normalizeIndianMobile } from '../shared/phone'
 
 export const bindings = env as Env & { TEST_MIGRATIONS: D1Migration[] }
 export const ORIGIN = 'https://optidesk.test'
@@ -53,7 +54,7 @@ export function installDatabaseHooks(): void {
   })
   beforeEach(async () => {
     const { results: triggers } = await bindings.DB.prepare(`SELECT name, sql FROM sqlite_master
-      WHERE type = 'trigger' AND name IN ('audit_logs_immutable_delete', 'purchases_no_hard_delete')`)
+      WHERE type = 'trigger' AND name IN ('audit_logs_immutable_delete', 'purchases_no_hard_delete', 'customers_no_hard_delete')`)
       .all<{ name: string; sql: string }>()
     for (const trigger of triggers) {
       await bindings.DB.prepare(`DROP TRIGGER "${trigger.name}"`).run()
@@ -148,7 +149,9 @@ export async function seedOwner(): Promise<string> {
 }
 
 export async function seedCustomer(id = 'customer-1', phone = '9876543210'): Promise<string> {
-  await bindings.DB.prepare('INSERT INTO customers(id,full_name,phone) VALUES (?,?,?)').bind(id, `Customer ${id}`, phone).run()
+  const canonical = normalizeIndianMobile(phone)
+  await bindings.DB.prepare('INSERT INTO customers(uuid,name,phone,normalized_phone) VALUES (?,?,?,?)')
+    .bind(id, `Customer ${id}`, formatIndianMobile(canonical), canonical).run()
   return id
 }
 

@@ -5,7 +5,10 @@ import { ErrorState } from './components/ui/States'
 import { authApi } from './lib/api'
 import { AuthLoadingScreen, AuthPage } from './pages/AuthPage'
 import { DashboardPage } from './pages/DashboardPage'
-import { CustomersPage, PaymentsPage, PrescriptionsPage, PurchasesPage, ReportsPage } from './pages/WorkspacePages'
+import { CustomerCreatePage, CustomerEditPage } from './pages/CustomerFormPage'
+import { CustomerProfilePage } from './pages/CustomerProfilePage'
+import { CustomersPage } from './pages/CustomersPage'
+import { PaymentsPage, PrescriptionsPage, PurchasesPage, ReportsPage } from './pages/WorkspacePages'
 import { SettingsPage } from './pages/SettingsPage'
 
 function SessionUnavailable({ onRetry, error }: { onRetry: () => void; error: unknown }) {
@@ -36,6 +39,9 @@ export function App() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="customers" element={<CustomersPage />} />
+          <Route path="customers/new" element={<CustomerCreatePage />} />
+          <Route path="customers/:uuid" element={<CustomerProfilePage />} />
+          <Route path="customers/:uuid/edit" element={<CustomerEditPage />} />
           <Route path="purchases" element={<PurchasesPage />} />
           <Route path="prescriptions" element={<PrescriptionsPage />} />
           <Route path="payments" element={<PaymentsPage />} />

@@ -7,19 +7,15 @@ function FutureModulePage({ title, description, scope }: { title: string; descri
     <div className="space-y-7">
       <PageHeader eyebrow="Future module" title={title} description={description} />
       <Card>
-        <CardHeader><CardTitle>Not available in Phase 1</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Not available in Phase 2</CardTitle></CardHeader>
         <CardContent className="space-y-4 text-sm leading-6 text-muted">
-          <p>Phase 1 provides administrator access and account security only. This page is a navigation destination, not an active business module.</p>
+          <p>Administrator access, account security, and customer management are available. This page remains a navigation destination, not an active business module.</p>
           <p>{scope} No records are loaded, and no sample data or editing controls are shown.</p>
           <Link to="/dashboard" className="inline-flex rounded-md font-medium text-ink underline underline-offset-4 hover:no-underline">Return to workspace readiness</Link>
         </CardContent>
       </Card>
     </div>
   )
-}
-
-export function CustomersPage() {
-  return <FutureModulePage title="Customers" description="Customer management is planned for a later phase." scope="Customer profiles and search will be introduced when the customer module is implemented." />
 }
 
 export function PurchasesPage() {

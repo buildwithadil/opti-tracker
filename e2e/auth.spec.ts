@@ -10,7 +10,11 @@ test('owner setup, real sessions, navigation, password change, and mobile access
   page.on('pageerror', error => failures.push(error.message))
   page.on('request', request => {
     const path = new URL(request.url()).pathname
-    if (path.startsWith('/api/')) apiPaths.add(path)
+    if (path.startsWith('/api/')) {
+      apiPaths.add(path)
+      // Phase 2 makes only the customer list available in this auth workflow.
+      if (path === '/api/customers') expect(request.method()).toBe('GET')
+    }
   })
 
   await test.step('static assets and API misses use security headers and safe JSON', async () => {
@@ -96,6 +100,6 @@ test('owner setup, real sessions, navigation, password change, and mobile access
   expect(failures).toEqual([])
   expect([...apiPaths].every(path => [
     '/api/auth/session', '/api/auth/setup', '/api/auth/login',
-    '/api/auth/logout', '/api/auth/change-password', '/api/shop/identity',
+    '/api/auth/logout', '/api/auth/change-password', '/api/shop/identity', '/api/customers',
   ].includes(path))).toBe(true)
 })

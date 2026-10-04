@@ -1,5 +1,7 @@
 # Phase 1 completion report
 
+> Historical checkpoint. For the current implemented scope, repository state and checks, see [PROJECT_STATUS.md](../PROJECT_STATUS.md) and the [Phase 2 report](phase-two.md).
+
 ## Delivered scope
 
 The foundation, neutral design system, and administrator authentication are implemented and pass the **local Phase 1 quality gate**. This is not a completed optical-shop business application or an approved production release.

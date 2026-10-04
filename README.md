@@ -2,7 +2,9 @@
 
 A single-owner optical shop application built with React/TypeScript, a Blaze REST API in Cloudflare Workers, and Cloudflare D1.
 
-**Current scope: Phase 1 foundation and authentication.** Customer management, prescriptions, purchases, payments, invoices, dashboard metrics, reports, exports, and editable shop configuration are future gated phases. Their navigation pages intentionally show phase notices. They do not contain sample records, fake totals, or active unverified business APIs. This is not yet a complete optical shop application or a production deployment.
+**Current scope: Phases 1–2, authentication and customer management.** Customers can be created, searched, edited, archived and restored through the authenticated API. Prescriptions, purchases, payments, invoices, dashboard metrics, reports, exports and editable shop configuration remain future gated phases. They show honest phase notices, not sample records or fake totals. This is not yet a complete optical shop application or a production deployment.
+
+See [PROJECT_STATUS.md](PROJECT_STATUS.md) for the current verification and handoff.
 
 ## Structure and architecture
 
@@ -14,21 +16,30 @@ Use a supported Node.js LTS release (Node 24 recommended) and npm. Exact depende
 
 ```bash
 npm ci
-cp .dev.vars.example .dev.vars
+# First-time checkout only: do not overwrite an existing private file.
+test -f .dev.vars || cp .dev.vars.example .dev.vars
 ```
 
-Edit `.dev.vars` privately. Generate **two different** random secrets with `openssl rand -base64 32`: one for `SESSION_PEPPER`, another for the one-time `SETUP_TOKEN`. Never commit `.dev.vars` or paste real secrets into issues/chat.
+On a fresh installation only, fill `.dev.vars` privately with **two different** random secrets generated with `openssl rand -base64 32`: `SESSION_PEPPER` and the one-time `SETUP_TOKEN`. **Keep existing secrets and owner accounts unchanged when upgrading.** Never commit private variables or paste real secrets into issues/chat.
 
 ```bash
 npm run db:migrate:local
 npm run dev
 ```
 
-Visit the local URL. First run redirects to setup. Enter your name, email, a 12–256 character passphrase, confirmation, and the setup secret. There is no default password and no public registration. Setup is blocked permanently once an owner record exists. Keep your passphrase in a trusted password manager.
+Visit the local URL. An existing owner signs in normally; a fresh database redirects to setup. Enter your name, email, a 12–256 character passphrase, confirmation, and the setup secret. There is no default password and no public registration. Setup is blocked permanently once an owner record exists. Keep your passphrase in a trusted password manager.
 
 Sessions use an HttpOnly cookie, expire after twelve hours, and are stored only as HMAC hashes in D1. CSRF tokens are session-derived and held in frontend memory. Changing the password signs out every active session. Auth requests and data are not stored in localStorage.
 
 The daily scheduled task removes only expired session/throttle/security-attempt records. It is not a backup job and never deletes business/audit data.
+
+## Customer management
+
+Open Customers to add profiles, search by literal name or mobile number, choose Active/Archived/All, sort and paginate. Indian mobile inputs such as `9876543210`, `+91 98765 43210` and `09876543210` share the canonical `+919876543210`. Arbitrary punctuation, foreign/invalid mobile structures and active duplicates are rejected.
+
+Customer profiles show contact details and registration/update dates. Archive actions preserve the record; restoration conflicts can be resolved by editing the archived phone first. Purchase/prescription sections are explicitly unavailable. See [Phase 2 report](docs/phase-two.md) for API/schema and format details.
+
+Migration `0004_customer_management.sql` is append-only and already applied to this workspace's local database. For a different populated database, take a private backup and review legacy phones first: unsupported inputs/canonical active collisions deliberately abort migration rather than merge or discard records.
 
 ## Quality checks
 
@@ -61,4 +72,4 @@ No automated external backup is currently configured. D1 Free Time Travel provid
 
 ## Phase reports
 
-[docs/phase-one.md](docs/phase-one.md) records verified behavior, test results, outstanding constraints, and Git staging/commit commands. No production records have been modified.
+[Phase 1](docs/phase-one.md) is the historical foundation checkpoint. [Phase 2](docs/phase-two.md) records the customer module, **536 passing workerd/D1 tests and 5 passing Chromium scenarios**, limitations and Git staging/commit commands. No remote production data has been modified, and Phase 3 has not started.
