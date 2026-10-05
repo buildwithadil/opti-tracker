@@ -1,19 +1,19 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --color-ink: #182d29;
-  --color-muted: #53645f;
-  --color-line: #dce4e1;
-  --color-paper: #f5f7f6;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  --color-ink: #1d1d1f;
+  --color-muted: #6e6e73;
+  --color-line: #e5e5e7;
+  --color-paper: #f7f7f5;
   --color-panel: #ffffff;
-  --color-accent: #176f60;
+  --color-accent: #176f5d;
 }
 
 :root {
-  color: #182d29;
-  background: #f5f7f6;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #1d1d1f;
+  background: #f7f7f5;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -25,7 +25,7 @@
 
 html {
   min-width: 320px;
-  background: #f5f7f6;
+  background: #f7f7f5;
 }
 
 body {
@@ -60,25 +60,33 @@ input:focus-visible,
 textarea:focus-visible,
 select:focus-visible,
 [tabindex]:focus-visible {
-  outline: 2px solid #52525b;
-  outline-offset: 3px;
+  outline: 2px solid #176f5d;
+  outline-offset: 2px;
 }
 
 .mobile-navigation::backdrop,
 .confirmation-dialog::backdrop {
-  background: rgb(0 0 0 / 0.3);
+  background: rgb(29 29 31 / 0.28);
 }
 
 select, textarea { min-width: 0; max-width: 100%; font-size: 16px !important; }
 select { min-height: 44px; }
-.shop-sheet::backdrop { background: rgb(13 30 25 / .35); }
+.shop-sheet::backdrop { background: rgb(29 29 31 / .28); }
 html:has(.shop-sheet[open]) { overflow: hidden; }
-.shop-sheet { position: fixed; inset: auto 0 0; margin: 0 auto; width: 100%; max-width: 620px; max-height: 92dvh; overflow-y: auto; border: 1px solid #dce4e1; border-radius: 24px 24px 0 0; padding: 24px 20px max(24px, env(safe-area-inset-bottom)); color: #182d29; background: white; }
-.sticky-actions { position: sticky; bottom: calc(78px + env(safe-area-inset-bottom)); z-index: 10; padding: 12px 0; background: #f5f7f6; }
+.shop-sheet { position: fixed; inset: auto 0 0; margin: 0 auto; width: 100%; max-width: 620px; max-height: 92dvh; overflow-y: auto; border: 1px solid #e5e5e7; border-radius: 16px 16px 0 0; padding: 20px 20px max(24px, env(safe-area-inset-bottom)); color: #1d1d1f; background: white; box-shadow: 0 -12px 30px rgb(29 29 31 / .08); }
+.sticky-actions { position: sticky; bottom: calc(78px + env(safe-area-inset-bottom)); z-index: 10; padding: 12px 0; background: #f7f7f5; }
 .bottom-navigation { padding-bottom: env(safe-area-inset-bottom); }
-@media (min-width: 640px) { .shop-sheet { inset: 0; margin: auto; height: fit-content; border-radius: 24px; } }
+@media (min-width: 640px) { .shop-sheet { inset: 0; margin: auto; height: fit-content; border-radius: 16px; } }
 @media (min-width: 1024px) { .sticky-actions { bottom: 0; } }
 @media print { .bottom-navigation, .shop-topbar, .sticky-actions, .demo-banner { display: none !important; } }
+
+.app-main a:not([class*="bg-"]):not([class*="border-"]):not([class*="rounded"]) { text-underline-offset: 3px; }
+.hairline-list > * + * { border-top: 1px solid #e5e5e7; }
+.touch-row { min-height: 64px; transition: background-color 120ms ease; }
+.touch-row:hover { background: rgb(247 247 245 / .7); }
+.touch-row:active { background: rgb(229 229 231 / .55); }
+.segmented-tabs { scrollbar-width: none; }
+.segmented-tabs::-webkit-scrollbar { display: none; }
 
 html:has(.mobile-navigation[open]),
 html:has(.confirmation-dialog[open]) {
