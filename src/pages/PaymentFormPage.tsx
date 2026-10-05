@@ -63,7 +63,7 @@ function PaymentForm({ customer, purchase }: { customer: Customer; purchase: Pur
   const back = <Link to={backPath} className="text-sm font-medium text-ink underline underline-offset-4">Back to purchase</Link>
   // Retain an already-open dirty draft if a background refresh changes eligibility.
   if (!available && !form.formState.isDirty && !pending && !save.isError) return <div className="space-y-5">{back}<PageHeader eyebrow="Payments" title="Payment cannot be recorded" description={customer.archived_at ? 'Restore this customer before recording a payment.' : purchase.outstanding_paise === 0 ? 'This purchase is fully paid. No further payment is required.' : 'This historical purchase cannot receive payments.'} /></div>
-  return <div className="space-y-7">{back}<PageHeader eyebrow={`Payment · ${customer.name}`} title="Record Payment" description="Record a received Cash, UPI or Card payment. The purchase total stays unchanged and each payment is preserved." />
+  return <div className="space-y-7">{back}<PageHeader eyebrow={`Payment · ${customer.name}`} title="Record Payment" description="Record what the customer paid. The sale stays unchanged." />
     <Card className="max-w-3xl"><CardContent className="pt-6"><PurchasePaymentSummary summary={purchase} /></CardContent></Card>
     <Card className="max-w-3xl"><CardHeader><CardTitle>Payment information</CardTitle></CardHeader><CardContent>
       <form className="space-y-5" noValidate aria-label="Record payment" onSubmit={event => { void form.handleSubmit(async values => {

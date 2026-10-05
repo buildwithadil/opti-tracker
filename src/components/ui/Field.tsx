@@ -1,7 +1,7 @@
 import { Children, cloneElement, isValidElement, useEffect, useRef, type InputHTMLAttributes, type ReactNode } from 'react'
 import { cn } from '../../lib/utils'
 
-export function Field({ id, label, hint, error, children }: { id: string; label: string; hint?: string; error?: string; children: ReactNode }) {
+export function Field({ id, label, hint, error, children, labelHidden = false }: { id: string; label: string; hint?: string; error?: string; children: ReactNode; labelHidden?: boolean }) {
   const ref=useRef<HTMLDivElement>(null)
   useEffect(()=>{
     if (!error) return
@@ -11,7 +11,7 @@ export function Field({ id, label, hint, error, children }: { id: string; label:
   },[error])
   return (
     <div ref={ref} className="min-w-0">
-      <label htmlFor={id} className="mb-1.5 block text-[13px] font-medium text-ink">{label}</label>
+      <label htmlFor={id} className={labelHidden ? 'sr-only' : 'mb-1.5 block text-[13px] font-medium text-ink'}>{label}</label>
       {Children.map(children,child=>error && isValidElement<InputHTMLAttributes<HTMLInputElement>>(child) ? cloneElement(child,{ 'aria-invalid': true,'aria-describedby': `${id}-error` }) : child)}
       {error ? <p id={`${id}-error`} className="mt-1.5 text-xs text-red-700" role="alert">{error}</p> : hint ? <p id={`${id}-hint`} className="mt-1.5 text-xs leading-5 text-muted">{hint}</p> : null}
     </div>

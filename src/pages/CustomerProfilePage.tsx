@@ -55,26 +55,26 @@ export function CustomerProfilePage() {
   const archived = !!record.archived_at
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-8">
       <Link to="/customers" className="inline-flex items-center gap-2 rounded-sm text-sm font-medium text-muted hover:text-ink"><ArrowLeft className="size-4" aria-hidden="true" />Back to customers</Link>
       <PageHeader
-        eyebrow="Customer profile"
+        eyebrow="Customer"
         title={record.name}
         description={formatIndianMobile(record.normalized_phone)}
         actions={
           <>
-            <Link to={`/customers/${record.uuid}/edit`} className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-white px-4 text-sm font-medium text-ink hover:bg-paper"><Pencil className="size-4" aria-hidden="true" />Edit customer</Link>
+            <Link to={`/customers/${record.uuid}/edit`} className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-line bg-white px-4 text-sm font-medium text-ink hover:bg-paper"><Pencil className="size-4" aria-hidden="true" />Edit customer</Link>
             <Button variant="secondary" disabled={changeStatus.isPending} icon={archived ? <RotateCcw className="size-4" aria-hidden="true" /> : <Archive className="size-4" aria-hidden="true" />} onClick={() => { changeStatus.reset(); setConfirmation(archived ? 'restore' : 'archive') }}>{archived ? 'Restore customer' : 'Archive customer'}</Button>
           </>
         }
       />
       {notice || routeNotice ? <p className="rounded-md border border-line bg-white px-4 py-3 text-sm text-ink" role="status">{notice || routeNotice}</p> : null}
-      {!archived ? <div className="grid grid-cols-2 gap-3"><NewSaleLink customer={record.uuid} /><ActionLink secondary to={`/receive-payment?customer=${record.uuid}`}>Receive Payment</ActionLink></div> : null}
-      <CustomerCredit key={`credit:${record.uuid}`} customerUuid={record.uuid} />
+      {!archived ? <div className="grid grid-cols-2 gap-2 sm:max-w-md"><NewSaleLink customer={record.uuid} /><ActionLink secondary to={`/receive-payment?customer=${record.uuid}`}>Receive payment</ActionLink></div> : null}
+      <section aria-label="Customer balance" className="border-y border-line bg-white px-5 py-5 sm:px-7"><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm text-muted">Outstanding</p><CustomerCredit key={`credit:${record.uuid}`} customerUuid={record.uuid} /></div><div className="text-right text-sm text-muted"><p>Customer since</p><p className="mt-1 text-ink"><time dateTime={record.created_at}>{customerDate(record.created_at)}</time></p></div></div></section>
       <Tabs tabs={tabs} value={tab} label="Customer sections" panelId="customer-panel" onChange={value=>setParams({ tab: value.toLowerCase() },{ replace: true })} />
       <section id="customer-panel" role="tabpanel" aria-label={tab} tabIndex={0} className="space-y-5">
       {tab==='Overview' ? <>
-      <Card>
+      <Card className="border-y border-x-0 rounded-none shadow-none">
         <CardHeader><CardTitle>Customer details</CardTitle></CardHeader>
         <CardContent>
           <dl className="space-y-5 text-sm sm:grid sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-x-6 sm:gap-y-5 sm:space-y-0">

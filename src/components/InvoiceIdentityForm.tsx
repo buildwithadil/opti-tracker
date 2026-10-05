@@ -15,7 +15,7 @@ import { ConfirmationDialog } from './ui/ConfirmationDialog'
 export function InvoiceIdentityForm() {
   const [notice, setNotice] = useState('')
   const identity = useQuery({ queryKey: invoiceKeys.identity, queryFn: ({ signal }) => invoicesApi.identity(signal), retry: false })
-  return <Card><CardHeader><CardTitle>Invoice business information</CardTitle></CardHeader><CardContent>
+  return <Card className="max-w-3xl"><CardHeader><CardTitle>Invoice business information</CardTitle></CardHeader><CardContent>
     {notice ? <p role="status" className="mb-5 text-sm text-ink">{notice}</p> : null}
     {identity.isPending ? <LoadingState label="Loading invoice business information…" /> : identity.isError ? <ErrorState description={invoiceErrorMessage(identity.error)} onRetry={() => void identity.refetch()} /> : <IdentityForm key={identity.data.updated_at} identity={identity.data} onSaved={() => setNotice('Invoice business information saved.')} />}
   </CardContent></Card>
@@ -43,7 +43,7 @@ function IdentityForm({ identity, onSaved }: { identity: InvoiceIdentity; onSave
         <Field id="invoice-shop-gstin" label="GSTIN" error={errors.gstin?.message} hint="Optional. Enter the shop's actual registration number only."><TextInput id="invoice-shop-gstin" maxLength={15} aria-invalid={!!errors.gstin} {...form.register('gstin')} /></Field>
       </fieldset>
       {save.isError ? <p role="alert" className="text-sm text-red-700">{invoiceErrorMessage(save.error)}</p> : null}
-      <Button type="submit" loading={pending}>Save invoice business information</Button>
+        <Button type="submit" loading={pending}>Save invoice business information</Button>
     </form>
     <ConfirmationDialog open={blocker.state === 'blocked'} title={pending ? 'Save in progress' : 'Discard unsaved changes?'} description={pending ? 'Wait for the business information save to finish.' : 'Your business information changes have not been saved.'} confirmLabel="Discard changes" cancelLabel="Keep editing" pending={pending} danger onCancel={() => { if (blocker.state === 'blocked') blocker.reset() }} onConfirm={() => { if (blocker.state === 'blocked' && !pending) blocker.proceed() }} />
   </>

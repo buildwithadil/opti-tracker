@@ -81,9 +81,9 @@ function CustomerForm({ customer }: { customer?: Customer }) {
 
   return (
     <div className="space-y-7">
-      <PageHeader eyebrow="Customer management" title={customer ? 'Edit customer' : 'Add Customer'} description={customer ? 'Update the customer’s name or Indian mobile number.' : 'Create a customer profile with a full name and Indian mobile number.'} />
+      <PageHeader eyebrow="Customer" title={customer ? 'Edit customer' : 'Add Customer'} description={customer ? 'Keep their name and phone number up to date.' : 'Save a name and phone number to get started.'} />
       <Card className="max-w-2xl">
-        <CardHeader><CardTitle>{customer ? 'Customer details' : 'New customer details'}</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{customer ? 'Customer details' : 'Contact details'}</CardTitle></CardHeader>
         <CardContent>
           {customer?.archived_at ? <p className="mb-5 rounded-md border border-line bg-paper p-3 text-sm leading-6 text-muted">This customer is archived. You can update contact details here; saving does not restore the profile.</p> : null}
           <form
@@ -107,10 +107,10 @@ function CustomerForm({ customer }: { customer?: Customer }) {
           >
             <fieldset className="space-y-5 disabled:opacity-70" disabled={pending}>
               <legend className="sr-only">Customer contact information</legend>
-              <Field id="customer-name" label="Full name" error={errors.name?.message} hint="Use 1–200 characters. Extra spaces are removed when saved.">
+              <Field id="customer-name" label="Full name" error={errors.name?.message}>
                 <TextInput id="customer-name" autoComplete="name" maxLength={200} aria-required="true" aria-invalid={!!errors.name} aria-describedby={errors.name ? 'customer-name-error' : 'customer-name-hint'} {...form.register('name')} />
               </Field>
-              <Field id="customer-phone" label="Mobile number" error={errors.phone?.message} hint="Indian mobile number, for example 98765 43210 or +91 98765 43210.">
+              <Field id="customer-phone" label="Mobile number" error={errors.phone?.message}>
                 <TextInput id="customer-phone" type="tel" inputMode="tel" autoComplete="tel" maxLength={32} aria-required="true" aria-invalid={!!errors.phone} aria-describedby={errors.phone ? 'customer-phone-error' : 'customer-phone-hint'} {...form.register('phone')} />
               </Field>
               {saveCustomer.isError ? <p className="text-sm leading-6 text-red-700" role="alert">{customerErrorMessage(saveCustomer.error)}</p> : null}
@@ -120,7 +120,6 @@ function CustomerForm({ customer }: { customer?: Customer }) {
               </div>
             </fieldset>
           </form>
-          <p className="mt-5 text-xs leading-5 text-muted">An active customer’s mobile number must be unique. No purchases or prescriptions are created by this form.</p>
         </CardContent>
       </Card>
       <ConfirmationDialog

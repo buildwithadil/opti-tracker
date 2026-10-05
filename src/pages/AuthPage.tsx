@@ -18,7 +18,7 @@ export function AuthPage() {
   if (session.isPending) return <AuthLoadingScreen />
   if (session.isError) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-paper px-4 py-8">
+        <main className="flex min-h-screen items-center justify-center bg-paper px-4 py-8">
         <ErrorState
           className="w-full max-w-md"
           title="Session service unavailable"
@@ -74,9 +74,9 @@ function AuthForm({ isSetup }: { isSetup: boolean }) {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-paper px-4 py-8 sm:px-6">
-      <section className="w-full max-w-md rounded-lg border border-line bg-white p-6 sm:p-8" aria-labelledby="auth-title">
-        <p className="mb-6 text-sm font-semibold text-ink">OptiDesk</p>
-        <h1 id="auth-title" className="text-2xl font-semibold tracking-tight text-ink">{isSetup ? 'Set up administrator access' : 'Administrator sign in'}</h1>
+      <section className="w-full max-w-md bg-white px-6 py-8 shadow-sm sm:px-9 sm:py-10" aria-labelledby="auth-title">
+        <div className="mb-8 flex items-center gap-2.5"><span className="flex size-8 items-center justify-center rounded-[9px] bg-accent text-white"><span className="text-sm font-semibold">O</span></span><p className="text-sm font-semibold tracking-tight text-ink">OptiDesk</p></div>
+        <h1 id="auth-title" className="text-[28px] font-semibold tracking-tight text-ink">{isSetup ? 'Set up administrator access' : 'Administrator sign in'}</h1>
         <p className="mt-2 text-sm leading-6 text-muted">
           {isSetup ? 'Complete the one-time setup using the secret supplied by your deployment administrator.' : 'Use the administrator email address and password. Public registration is not available.'}
         </p>
@@ -115,7 +115,7 @@ function AuthForm({ isSetup }: { isSetup: boolean }) {
             <Button className="w-full" type="submit" loading={authMutation.isPending}>{isSetup ? 'Complete one-time setup' : 'Sign in'}</Button>
           </fieldset>
         </form>
-        <p className="mt-6 text-xs leading-5 text-muted">Session cookies are managed by the service. Security tokens are kept only in runtime memory.</p>
+        <p className="mt-7 border-t border-line pt-5 text-xs leading-5 text-muted">Your session is managed securely by the service.</p>
       </section>
     </main>
   )

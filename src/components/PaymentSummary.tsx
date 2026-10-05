@@ -3,7 +3,7 @@ import { paymentStatusLabels } from '../../shared/payments'
 import { purchaseMoney } from '../lib/purchases'
 
 export function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
-  return <span className={`inline-flex rounded-full border border-line px-2.5 py-1 text-xs font-medium ${status === 'paid' ? 'bg-ink text-white' : status === 'partially_paid' ? 'bg-paper text-ink' : 'bg-white text-muted'}`}>{paymentStatusLabels[status]}</span>
+  return <span className={`text-xs font-medium ${status === 'paid' ? 'text-accent' : status === 'partially_paid' ? 'text-ink' : 'text-muted'}`}>{paymentStatusLabels[status]}</span>
 }
 export function PurchasePaymentSummary({ summary }: { summary: Summary }) {
   return <dl className="grid gap-5 text-sm sm:grid-cols-3">

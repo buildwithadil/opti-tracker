@@ -127,9 +127,9 @@ function PrescriptionForm({ customer, prescription }: { customer: Customer; pres
   return (
     <div className="space-y-7 [overflow-wrap:anywhere]">
       <Link to={cancelPath} className="text-sm font-medium text-ink underline underline-offset-4">{prescription ? 'Back to prescription' : 'Back to customer'}</Link>
-      <PageHeader eyebrow={`Prescription · ${customer.name}`} title={prescription ? 'Revise prescription' : 'Add prescription'} description={prescription ? `Create a replacement for version ${prescription.revision_number}. The previous values remain unchanged and available in history.` : 'Transcribe a supplied spectacle prescription. Leave unknown measurements blank; nothing is calculated or inferred.'} />
+      <PageHeader eyebrow={`Prescription · ${customer.name}`} title={prescription ? 'Revise prescription' : 'Add prescription'} description={prescription ? `Create a replacement for version ${prescription.revision_number}. Previous values stay in history.` : 'Enter the supplied values exactly. Blank means unknown.'} />
       <Card className="max-w-4xl">
-        <CardHeader><CardTitle>{prescription ? 'Replacement prescription' : 'New spectacle prescription'}</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{prescription ? 'Replacement values' : 'Spectacle prescription'}</CardTitle></CardHeader>
         <CardContent>
           {prescription ? <p className="mb-5 rounded-md border border-line bg-paper p-3 text-sm leading-6 text-muted">Saving a revision creates a new version, not an edit to this record. Enter a reason for the replacement. Legacy incomplete or noncanonical values must be transcribed into valid fields before saving.</p> : null}
           <form className="space-y-6" noValidate aria-label={prescription ? 'Revise prescription' : 'New prescription'} onSubmit={event => {

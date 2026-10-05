@@ -6,18 +6,17 @@ import type { CustomerListQuery } from '../../shared/customers'
 import type { ShopCustomer } from '../../shared/shop'
 import { formatIndianMobile } from '../../shared/phone'
 import { Button } from '../components/ui/Button'
-import { Card, CardContent } from '../components/ui/Card'
 import { TextInput } from '../components/ui/Field'
 import { PageHeader } from '../components/ui/PageHeader'
 import { ErrorState, LoadingState } from '../components/ui/States'
-import { customerDate, customerErrorMessage } from '../lib/customers'
+import { customerErrorMessage } from '../lib/customers'
 import { shopApi } from '../lib/shop'
 import { purchaseMoney } from '../lib/purchases'
 import { ActionLink } from '../components/ui/ShopUI'
 
 type ListQuery = Required<CustomerListQuery>
-const selectClass = 'h-11 w-full rounded-md border border-line bg-white px-3 text-sm text-ink'
-const primaryLinkClass = 'inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-accent px-4 text-sm font-semibold text-white hover:bg-accent/90'
+const selectClass = 'h-11 w-full rounded-[10px] border border-line bg-white px-3 text-sm text-ink'
+const primaryLinkClass = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-[10px] bg-accent px-4 text-sm font-semibold text-white shadow-sm hover:bg-accent/90'
 
 function boundedNumber(value: string | null, fallback: number, max: number) {
   if (!value || !/^[1-9][0-9]*$/u.test(value)) return fallback
@@ -47,7 +46,7 @@ function queryParams(query: ListQuery) {
 }
 
 export function CustomerStatus({ archived }: { archived: boolean }) {
-  return <span className="inline-flex rounded-full border border-line bg-paper px-2.5 py-1 text-xs font-medium text-muted">{archived ? 'Archived' : 'Active'}</span>
+  return <span className={`text-xs font-medium ${archived ? 'text-muted' : 'text-accent'}`}>{archived ? 'Archived' : 'Active'}</span>
 }
 
 function CustomerSearch({ initialValue, onSearch }: { initialValue: string; onSearch: (search: string) => void }) {
@@ -80,25 +79,23 @@ function CustomerTable({ customers }: { customers: ShopCustomer[] }) {
           <caption className="sr-only">Customer search results</caption>
           <thead className="border-b border-line bg-paper text-xs text-muted">
             <tr>
-              <th scope="col" className="px-6 py-3 font-medium">Name</th>
+              <th scope="col" className="px-5 py-3 font-medium">Customer</th>
               <th scope="col" className="px-4 py-3 font-medium">Phone</th>
               <th scope="col" className="px-4 py-3 font-medium">Status</th>
-              <th scope="col" className="px-4 py-3 font-medium">Date added</th>
               <th scope="col" className="px-4 py-3 font-medium">Outstanding</th>
-              <th scope="col" className="px-6 py-3 text-right font-medium">Actions</th>
+              <th scope="col" className="px-5 py-3 text-right font-medium"> </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
             {customers.map((customer) => (
               <tr key={customer.uuid} className="hover:bg-paper/70">
-                <th scope="row" className="max-w-72 px-6 py-4 font-medium text-ink">
+                <th scope="row" className="max-w-72 px-5 py-4 font-medium text-ink">
                   <Link className="rounded-sm underline-offset-4 hover:underline [overflow-wrap:anywhere]" to={`/customers/${customer.uuid}`}>{customer.name}</Link>
                 </th>
                 <td className="whitespace-nowrap px-4 py-4 text-muted">{formatIndianMobile(customer.normalized_phone)}</td>
                 <td className="px-4 py-4"><CustomerStatus archived={!!customer.archived_at} /></td>
-                <td className="whitespace-nowrap px-4 py-4 text-muted"><time dateTime={customer.created_at}>{customerDate(customer.created_at)}</time></td>
                 <td className="px-4 py-4 font-semibold tabular-nums">{customer.outstanding_paise===null ? 'Review needed' : purchaseMoney(customer.outstanding_paise)}</td>
-                <td className="px-6 py-4 text-right"><ActionLink secondary to={`/customers/${customer.uuid}`} aria-label={`View ${customer.name}`}>View</ActionLink></td>
+                <td className="px-5 py-4 text-right"><ActionLink secondary to={`/customers/${customer.uuid}`} aria-label={`View ${customer.name}`}>View</ActionLink></td>
               </tr>
             ))}
           </tbody>
@@ -106,19 +103,13 @@ function CustomerTable({ customers }: { customers: ShopCustomer[] }) {
       </div>
       <ul className="divide-y divide-line md:hidden" aria-label="Customer search results">
         {customers.map((customer) => (
-          <li key={customer.uuid} className="space-y-3 p-5">
-            <div className="flex items-start justify-between gap-3">
-              <Link className="min-w-0 rounded-sm text-sm font-semibold text-ink underline-offset-4 hover:underline [overflow-wrap:anywhere]" to={`/customers/${customer.uuid}`}>{customer.name}</Link>
-              <CustomerStatus archived={!!customer.archived_at} />
-            </div>
-            <p className="text-sm text-muted">{formatIndianMobile(customer.normalized_phone)}</p>
-            <p className="text-sm text-muted">Outstanding <strong className="tabular-nums text-ink">{customer.outstanding_paise===null ? 'Review needed' : purchaseMoney(customer.outstanding_paise)}</strong></p>
-            <p className="text-sm text-muted">{customer.last_sale ? `Last sale ${customer.last_sale.purchase_date} · ${purchaseMoney(customer.last_sale.total_paise)}` : 'No sales yet'}</p>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-xs text-muted">Date added <time dateTime={customer.created_at}>{customerDate(customer.created_at)}</time></p>
-              <ActionLink secondary to={`/customers/${customer.uuid}`} aria-label={`View ${customer.name}`}>View profile</ActionLink>
-            </div>
-            {!customer.archived_at ? <div className="flex flex-wrap gap-2"><ActionLink secondary to={`/sales/new?customer=${customer.uuid}`}>New Sale</ActionLink>{customer.outstanding_paise!==null && customer.outstanding_paise>0 ? <ActionLink secondary to={`/receive-payment?customer=${customer.uuid}`}>Receive Payment</ActionLink> : null}</div> : null}
+           <li key={customer.uuid} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4">
+             <div className="flex items-start justify-between gap-3">
+               <Link className="min-w-0 rounded-sm text-sm font-semibold text-ink underline-offset-4 hover:underline [overflow-wrap:anywhere]" to={`/customers/${customer.uuid}`}>{customer.name}</Link>
+               <CustomerStatus archived={!!customer.archived_at} />
+             </div>
+            <p className="w-full text-sm text-muted">{formatIndianMobile(customer.normalized_phone)} · {customer.outstanding_paise===null ? 'Review needed' : customer.outstanding_paise > 0 ? <><strong className="tabular-nums text-ink">{purchaseMoney(customer.outstanding_paise)}</strong> due</> : <>Paid · {purchaseMoney(0)}</>}</p>
+            <ActionLink quiet className="ml-auto" to={`/customers/${customer.uuid}`} aria-label={`View ${customer.name}`}>View customer →</ActionLink>
           </li>
         ))}
       </ul>
@@ -148,10 +139,9 @@ export function CustomersPage() {
   const lastRecord = pagination ? Math.min(query.page * query.pageSize, pagination.total) : 0
 
   return (
-    <div className="space-y-7">
-      <PageHeader title="Customers" description="Search by name or phone. See balances and start the next sale." actions={<Link className={primaryLinkClass} to="/customers/new"><Plus className="size-4" aria-hidden="true" />Add Customer</Link>} />
-      <Card>
-        <CardContent className="space-y-5">
+    <div className="space-y-8">
+      <PageHeader title="Customers" description="Find a customer, check their balance, or start a sale." actions={<Link aria-label="Add Customer" className={primaryLinkClass} to="/customers/new"><Plus className="size-4" aria-hidden="true" />Add customer</Link>} />
+      <section className="space-y-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
             <CustomerSearch initialValue={params.get('search') ?? ''} onSearch={searchCustomers} />
             <div className="sm:w-44">
@@ -161,7 +151,7 @@ export function CustomersPage() {
               </select>
             </div>
           </div>
-          <details><summary className="min-h-11 cursor-pointer text-sm font-semibold">Sort & list options</summary><div className="mt-3 grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_8rem]">
+          <details className="border-y border-line py-2"><summary aria-label="Sort & list options" className="min-h-11 cursor-pointer py-2 text-sm font-semibold">Sort & list options</summary><div className="mt-3 grid gap-4 pb-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_8rem]">
             <div>
               <label htmlFor="customer-sort" className="mb-2 block text-sm font-medium text-ink">Sort by</label>
               <select id="customer-sort" className={selectClass} value={query.sort} onChange={(event) => updateQuery({ sort: event.target.value as ListQuery['sort'] })}>
@@ -183,17 +173,16 @@ export function CustomersPage() {
             </div>
           </div></details>
           {query.search || query.status !== 'active' ? <Button size="sm" variant="ghost" onClick={() => updateQuery({ search: '', status: 'active' })}>Clear filters</Button> : null}
-        </CardContent>
-      </Card>
+      </section>
       {validSearch && (customers.isPending || outsidePage) ? <LoadingState label="Loading customers…" /> : null}
       {customers.isError ? <ErrorState title="Customers could not be loaded" description={customerErrorMessage(customers.error)} onRetry={() => void customers.refetch()} /> : null}
       {customers.isSuccess && !outsidePage ? (
-        <Card>
+        <section className="overflow-hidden border-y border-line bg-white">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-4 sm:px-6">
             <h2 className="text-sm font-semibold text-ink">{query.search ? 'Search results' : query.status === 'archived' ? 'Archived customers' : query.status === 'all' ? 'All customers' : 'Active customers'}</h2>
             <p className="text-xs text-muted" role="status">{pagination?.total ?? 0} {(pagination?.total ?? 0) === 1 ? 'customer' : 'customers'}</p>
           </div>
-          {customers.data.customers.length ? <CustomerTable customers={customers.data.customers} /> : (
+           {customers.data.customers.length ? <CustomerTable customers={customers.data.customers} /> : (
             <div className="px-5 py-12 text-center sm:px-6">
               <h3 className="text-base font-semibold text-ink">{query.search ? 'No matching customers' : query.status === 'archived' ? 'No archived customers' : 'No customers yet'}</h3>
               <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted">{query.search ? 'Try a different name or mobile number, or change the customer status.' : query.status === 'archived' ? 'Archived profiles will appear here. Archiving keeps the customer record available.' : 'Add a customer to start managing contact details. No sample records are shown.'}</p>
@@ -208,7 +197,7 @@ export function CustomersPage() {
             </div>
           </nav>
           {(pagination?.totalPages ?? 1) > 10_000 ? <p className="px-5 pb-4 text-xs leading-5 text-muted sm:px-6">The first 10,000 pages are available. Narrow your search to find other customers.</p> : null}
-        </Card>
+         </section>
       ) : null}
     </div>
   )

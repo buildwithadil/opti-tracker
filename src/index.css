@@ -80,7 +80,15 @@ html:has(.shop-sheet[open]) { overflow: hidden; }
 @media (min-width: 1024px) { .sticky-actions { bottom: 0; } }
 @media print { .bottom-navigation, .shop-topbar, .sticky-actions, .demo-banner { display: none !important; } }
 
-.app-main a:not([class*="bg-"]):not([class*="border-"]):not([class*="rounded"]) { text-underline-offset: 3px; }
+.text-action { display: inline-flex; min-height: 44px; align-items: center; gap: 6px; color: #176f5d; font-size: 14px; font-weight: 500; text-underline-offset: 3px; }
+.text-action:hover { text-decoration: underline; }
+.form-section { min-width: 0; border-top: 1px solid #e5e5e7; padding-top: 20px; }
+.form-control { width: 100%; border: 1px solid #e5e5e7; border-radius: 8px; background: white; padding: 10px 12px; color: #1d1d1f; }
+.form-control[aria-invalid="true"] { border-color: #b91c1c; }
+.form-control:disabled { opacity: .6; }
+.record-details { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 12px 20px; font-size: 14px; overflow-wrap: anywhere; }
+.record-details dt { color: #6e6e73; }
+.record-details dd { min-width: 0; }
 .hairline-list > * + * { border-top: 1px solid #e5e5e7; }
 .touch-row { min-height: 64px; transition: background-color 120ms ease; }
 .touch-row:hover { background: rgb(247 247 245 / .7); }

@@ -46,7 +46,7 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-7">
-      <PageHeader eyebrow="Settings" title="Settings" description="Manage invoice business information and the administrator password." />
+      <PageHeader title="Settings" description="Shop information and account security." />
       <Card>
         <CardHeader><CardTitle>Shop and administrator</CardTitle></CardHeader>
         <CardContent>
@@ -59,7 +59,6 @@ export function SettingsPage() {
                 <dt className="text-muted">Administrator name</dt><dd className="break-words font-medium text-ink">{administrator?.name}</dd>
                 <dt className="text-muted">Administrator email</dt><dd className="break-words font-medium text-ink">{identity.data.administratorEmail}</dd>
               </dl>
-              <p className="mt-5 text-xs leading-5 text-muted">Invoice business information is available below. Broader shop, numbering and tax preferences remain a later phase.</p>
             </>
           ) : null}
         </CardContent>

@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/Card'
 import { ErrorState, LoadingState } from './ui/States'
 
 export function PrescriptionStatus({ status }: { status: Prescription['status'] }) {
-  return <span className="inline-flex rounded-full border border-line bg-paper px-2.5 py-1 text-xs font-medium text-muted">{status === 'current' ? 'Current' : status === 'superseded' ? 'Superseded' : 'Archived'}</span>
+  return <span className={`text-xs font-medium ${status === 'current' ? 'text-accent' : 'text-muted'}`}>{status === 'current' ? 'Current' : status === 'superseded' ? 'Superseded' : 'Archived'}</span>
 }
 
 export function PrescriptionHistory({ customer, prescription }: { customer: Customer; prescription?: Prescription }) {

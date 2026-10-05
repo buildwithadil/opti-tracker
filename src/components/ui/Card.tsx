@@ -2,11 +2,11 @@ import type { HTMLAttributes } from 'react'
 import { cn } from '../../lib/utils'
 
 export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('min-w-0 border-y border-line bg-white', className)} {...props} />
+  return <div className={cn('min-w-0 border-t border-line', className)} {...props} />
 }
 
 export function CardHeader({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('px-5 pt-5 sm:px-6 sm:pt-6', className)} {...props} />
+  return <div className={cn('pt-5', className)} {...props} />
 }
 
 export function CardTitle({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) {
@@ -14,5 +14,5 @@ export function CardTitle({ className, ...props }: HTMLAttributes<HTMLHeadingEle
 }
 
 export function CardContent({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('p-5 sm:p-6', className)} {...props} />
+  return <div className={cn('py-5', className)} {...props} />
 }

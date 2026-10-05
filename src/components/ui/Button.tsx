@@ -4,12 +4,12 @@ import { LoaderCircle } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex max-w-full items-center justify-center rounded-[10px] text-sm font-semibold transition-[background-color,border-color,color,box-shadow] duration-150 disabled:pointer-events-none disabled:opacity-45',
+  'inline-flex max-w-full items-center justify-center rounded-lg text-sm font-semibold transition-colors duration-150 disabled:pointer-events-none disabled:opacity-45',
   {
     variants: {
       variant: {
-        primary: 'bg-accent text-white shadow-sm hover:bg-accent/90 active:bg-accent/80',
-        secondary: 'border border-line bg-white text-ink hover:bg-paper active:bg-line/70',
+        primary: 'bg-accent text-white hover:bg-accent/90 active:bg-accent/80',
+        secondary: 'border border-line bg-transparent text-ink hover:bg-line/40 active:bg-line/70',
         ghost: 'text-muted hover:bg-paper hover:text-ink active:bg-line/60',
         danger: 'bg-red-700 text-white shadow-sm hover:bg-red-800',
       },
