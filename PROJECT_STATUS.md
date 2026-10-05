@@ -1,12 +1,12 @@
 # OptiDesk project status
 
-Last verified: 5 October 2026. Current handoff: Phase 5.
+Last verified: 5 October 2026. Current handoff: Phase 6.
 
 ## Current stage
 
-**Phase 5 — Payments & Credit Management: implemented and locally verified. Phase 6 has not started.**
+**Phase 6 — Invoice Generation & Printing: implemented and locally verified. Phase 7 has not started.**
 
-Phases 1–4 are committed through `cd0e82c feat: implement purchase management module` and their regression suites pass. Phase 5 changes are uncommitted. This is not a complete optical-shop release or an approved production deployment.
+Phases 1–5 are committed through `d474280 feat: implement payments and credit management` and their regression suites pass. Phase 6 changes are uncommitted. This is not a complete optical-shop release or an approved production deployment.
 
 ## Delivered
 
@@ -23,58 +23,65 @@ Phases 1–4 are committed through `cd0e82c feat: implement purchase management 
 - Backend-derived paid/outstanding amounts and Unpaid/Partially paid/Paid status; customer total outstanding credit across all purchases, without changing purchase totals/items/timestamps.
 - Four-statement atomic payment/audit/response/balance D1 batch; database-level concurrent overpayment, customer/archive/date, duplicate and immutable-ledger guards.
 - Responsive payment forms with in-memory submission UUIDs, synchronous locking, dirty-form protections, retained drafts and authoritative stale-balance/duplicate refresh.
+- Phase 6: one on-demand immutable invoice per purchase, authoritative versioned customer/shop/item/financial and payment-at-issue snapshots, safe sequential numbering and permanent audited number reservations.
+- Minimal business information form reuses existing shop name/address/contact/GSTIN fields; no duplicate settings, numbering preferences or tax configuration API.
+- Dedicated desktop/mobile invoice view with native A4 print, repeated table headers, preserved rows/totals and application chrome/buttons excluded.
 
 ## Latest actual checks
 
-The final implementation run succeeded:
+Implementation and regression verification ran:
 
 ```bash
-npm run check && npm run test:e2e
+npm run check
+npm run test:e2e
 ```
 
 | Gate | Actual result |
 |---|---|
 | TypeScript | Passed |
 | ESLint | Passed |
-| Actual workerd/D1 tests | **1,004 passed across 23 files**, including Phase 1–4 regression suites |
-| Real-backend Chromium | **27 passed**, including 19 earlier scenarios and 8 payment desktop/mobile scenarios |
+| Actual workerd/D1 tests | **1,031 passed across 26 files**, including Phase 1–5 regression suites |
+| Real-backend Chromium | **33 passed**, including 27 earlier scenarios and 6 invoice desktop/mobile scenarios |
+| Actual A4 output | Six PDFs verified; short documents one page; 100-item documents multi-page; desktop long document eight pages |
 | Production build | Passed |
 | Dependency audit | **0 vulnerabilities** |
 | Diff whitespace checks | Passed for tracked changes and new files |
-| Existing local D1 migration | `0007_payment_management.sql` applied: **15 commands**; repeat found no pending migrations |
+| Existing local D1 migration | `0008_invoice_management.sql` applied: **16 commands**; repeat found no pending migrations |
 | Preservation verification | Every existing table row/original column preserved; earlier migrations and private variables unchanged; foreign keys clean |
-| Live local D1 integrity | Foreign-key check empty; quick check `ok`; migration ledger contains all seven files |
+| Live local D1 integrity | Foreign-key check empty; quick check `ok`; migration ledger contains all eight files |
 
-Payment coverage includes exact one-paise/safe-range amounts, partial/full/zero-total status, all-customer credit and aggregate overflow, forced racing genuine D1 writes, duplicate keys across purchases, archive races, audit/later-statement rollback, skipped-audit commit failure, all-column/no-op immutable/REPLACE guards, scoped reads and snapshot-consistent history. Browser coverage includes all three methods, unchanged purchase snapshots, customer aggregate refresh, stale-balance field focus/draft retention, dirty cancel/navigation/back/reload, double submit, genuine full-payment lost-response retry, >20 payment pagination and archived readability. Earlier auth/customer/clinical/purchase checks also pass.
+Invoice coverage includes unpaid/partial/paid/zero-total documents, multi-item discounts and persisted tax, minimal prescription/privacy, concurrent same/different-purchase generation, sequential uniqueness, duplicate/lost-response reuse, permanent failed reservations, skipped/wrong/pre-existing audit and later-statement rollback, all-column/no-op/REPLACE guards, hierarchy/security and historical snapshot behavior independent of later financial read-model changes. Browser checks invoke native print, generate real PDFs, inspect A4 metadata/text/every page's rendered ink margins, verify all 100 lines/repeated headers/final totals and exclude navigation/buttons. Short and first/last long PDF pages plus mobile view were visually inspected. Earlier regression suites also pass.
 
-Nonblocking diagnostics: existing Blaze sourcemap messages and the >500 kB client chunk warning. Three intentional deferred-FK commit-failure tests emit workerd/Miniflare rollback diagnostics; all assertions pass and verify pre-existing test records survive those failures.
+Nonblocking diagnostics: existing Blaze sourcemap messages and the >500 kB client chunk warning. Five intentional deferred-FK commit failures emit workerd/Miniflare rollback diagnostics; all assertions pass and verify pre-existing test records survive those failures.
 
 ## Database and API
 
-Migration 0006's immutable purchase/item snapshots remain unchanged. Migration 0007 extends the existing `payments` table without rebuilding it: nullable `client_request_id` and deferred restrictive `creation_audit_id` FK, unique customer/submission and audit indexes, history/settled lookup indexes, immutable/REPLACE and atomic creation guards. `purchase_payment_balances` derives balances/status from persisted records. Existing legacy payments/reversals remain unchanged; new reversal writes are disabled.
+Migrations 0001–0007 and their immutable financial records remain unchanged. Migration 0008 adds strict `invoices` and `invoice_number_reservations` tables, ownership/audit FKs, uniqueness/immutability/REPLACE guards and an authoritative snapshot view. Reservation insertion advances the existing `shop_settings.next_invoice_number` inside its transaction; a later failed issue retains the committed reservation. Never-reset numbering is supported; legacy collisions and unsupported policies fail closed. No purchase/payment row or historical settings/counter is rewritten by the migration.
 
 Authenticated Blaze APIs:
-- `GET /api/customers/:customerUuid/credit-summary` — total customer outstanding in integer paise.
-- `GET /api/customers/:customerUuid/purchases/:purchaseUuid/payments` — chronological history; `page`, `pageSize`; snapshot-consistent count/balance.
-- `POST /api/customers/:customerUuid/purchases/:purchaseUuid/payments` — atomic immutable payment plus creation audit; HTTP 201.
-- `GET /api/customers/:customerUuid/purchases/:purchaseUuid/payments/:paymentUuid` — customer/purchase-scoped individual record.
+- `GET /api/customers/:customerUuid/purchases/:purchaseUuid/invoice` — existing immutable invoice, or null for an owned purchase without one.
+- `POST /api/customers/:customerUuid/purchases/:purchaseUuid/invoice` — issue once (201), otherwise reuse the existing invoice (200).
+- `GET /api/shop/invoice-identity` — existing business name/address/contact/GSTIN and concurrency timestamp.
+- `PATCH /api/shop/invoice-identity` — update those four fields with stale-write protection and atomic minimal audit.
 
-The three existing purchase endpoints remain active and now include derived payment fields. No edit/delete payment or purchase endpoint exists. JSON aliases existing identity columns as UUID fields; prior authentication, Origin/CSRF, validation, response envelopes, no-store/security headers and audit conventions remain active.
+Existing customer/prescription/purchase/payment APIs remain active. No destructive invoice, purchase or payment endpoint exists. Prior authentication, Origin/CSRF, strict validation, prepared SQL, response envelopes, no-store/security headers and audit conventions remain active.
 
-The actual preserved local database has **one owner, one customer, one prescription, zero purchases/items/payments and four audit records**. Every existing table's original rows/columns/rowids and migration 0001–0006/private-variable hashes match the pre-implementation baseline. Payment test records remain in disposable databases. Ignored private before/after exports and verification reports are under `backups/phase-five-before-20261005/` (directory 0700, files 0600); no reset/restore was performed.
+The actual preserved local database has **one owner, one customer, one prescription, zero purchases/items/payments and four audit records**; new invoice/reservation tables are empty. Every existing table's original rows/columns/rowids and migration 0001–0007/private-variable hashes match the pre-implementation baseline. All invoice fixture records remain in disposable databases. Ignored private before/after exports and verification reports are under `backups/phase-six-before-20261005/` (directory 0700, files 0600); no reset/restore was performed.
 
 ## Monetary and historical rules
 
 - API input amounts are decimal rupee strings; purchases allow zero, payments require a positive amount. Excess precision is rejected, never rounded.
 - Stored/returned amounts are integer paise; BigInt parsing/intermediates and safe-integer checks prevent floating-point currency arithmetic and overflow.
 - Subtotal is gross quantity × unit price summed across items. Whole-line discounts plus the optional purchase discount form the header discount. Grand total is subtotal − discount.
-- New purchases have no tax/invoice operation. Separate immutable payments reduce outstanding without altering any purchase financial field.
+- New purchases have no tax calculation. Invoices copy actual persisted tax/financial fields without recalculating or altering them. Separate immutable payments reduce live outstanding without changing issued invoices.
 - Paid = settled, nondeleted payment sum; outstanding = stored purchase total − paid. Zero-total purchases are paid; no balance/status is cached in a purchase row.
 - Unsupported legacy posted reversals or inconsistent money return `FINANCIAL_DATA_INVALID`, without rounding, clamping or rewriting history. Unrepresentable customer aggregates return `CREDIT_TOTAL_OUT_OF_RANGE`.
 - Cash/UPI/Card are the only new methods. Canonical UTC payment time cannot precede the purchase date's UTC midnight or be in the future.
 - A prescription is optional, must exist and belong to the same customer, and retains its selected UUID permanently, including after a newer prescription/revision.
 - Purchase-create audits include exact item snapshots and financial totals, owner/request identity, and omit notes, customer contacts and clinical measurements.
 - Payment-create audits contain UUIDs, amount, method and received/created times with owner/request identity; reference, notes, contacts and clinical values are omitted.
+- Invoice customer/shop/item/totals/payment-at-issue data is snapshotted once. Normal invoices exclude customer addresses and clinical measurements; only an optional prescription UUID is retained.
+- Invoice and number-reservation audits store owner/request, IDs, number and timestamps, without duplicating customer/shop contacts or clinical information.
 
 ## Remaining limitations
 
@@ -84,16 +91,18 @@ The actual preserved local database has **one owner, one customer, one prescript
 - Credit means purchase debt only, not a wallet, transferable credit or lending facility. Customer credit aggregation reads all purchases, not just a visible history page.
 - Seven free-text optical categories/products; no catalog or inventory behavior. Prescription choices include explicit earlier versions; no clinical recommendation is inferred.
 - Browser verification covers Chromium at desktop 1440×960 and mobile 390×844. Other engines/devices remain unverified.
+- Issued payment figures are historical as-of values; later receipts remain on the purchase. No invoice corrections/reissue, legacy already-numbered document import or financial-year reset is enabled.
+- Native printer/driver settings can override A4/margins/scaling; use A4 and disable browser headers/footers. Print tests require installed Poppler tools; physical printer hardware remains unverified.
 - Earlier remote Free-plan PBKDF2 CPU/backup rehearsal and finite-quota/Unicode-search limitations remain as documented in prior reports.
 
 ## Boundaries and stop condition
 
-**Stop at Phase 5. Phase 6 has not started and requires explicit approval.** No invoice generation/numbering/printing, refunds, wallets/lending, inventory, R2/images, reports/exports or financial dashboard metrics were implemented. No new dependencies, remote resources/migrations/deployments, paid services, secret regeneration, `.dev.vars` edits, existing-record deletion, local database reset or Git commit occurred during Phase 5.
+**Stop at Phase 6. Phase 7 has not started and requires explicit approval.** No reports/CSV exports, analytics, inventory/catalog, R2/images, purchase/payment/credit editing or refunds were implemented. No new npm dependencies, remote resources/migrations/deployments, paid services, secret regeneration, `.dev.vars` edits, existing-record deletion, local database reset or Git commit occurred during Phase 6.
 
 ## Documentation
 
 - [Architecture](docs/architecture.md)
-- Historical reports: [Phase 1](docs/phase-one.md), [Phase 2](docs/phase-two.md), [Phase 3](docs/phase-three.md), [Phase 4](docs/phase-four.md)
-- [Phase 5 implementation report and exact staging/commit commands](docs/phase-five.md)
+- Historical reports: [Phase 1](docs/phase-one.md), [Phase 2](docs/phase-two.md), [Phase 3](docs/phase-three.md), [Phase 4](docs/phase-four.md), [Phase 5](docs/phase-five.md)
+- [Phase 6 implementation report and exact staging/commit commands](docs/phase-six.md)
 - [Deployment prerequisites](docs/deployment.md)
 - [Backup/restore runbook](docs/backup-and-restore.md)

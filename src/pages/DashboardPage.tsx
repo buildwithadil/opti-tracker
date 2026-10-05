@@ -11,7 +11,7 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-7">
-      <PageHeader eyebrow="Phase 5" title="Workspace readiness" description="Administrator access, customers, prescriptions, purchases, payments and outstanding credit are available. Invoices and reports remain planned for later phases." />
+      <PageHeader eyebrow="Phase 6" title="Workspace readiness" description="Administrator access, customers, prescriptions, purchases, payments, credit and printable invoices are available. Reports remain planned for a later phase." />
       <Card>
         <CardHeader><CardTitle>Administrator access is ready</CardTitle></CardHeader>
         <CardContent className="space-y-4 text-sm leading-6 text-muted">
@@ -53,7 +53,7 @@ export function DashboardPage() {
             {primaryNavigation.filter((item) => item.to !== '/dashboard' && item.to !== '/customers' && item.to !== '/prescriptions' && item.to !== '/purchases' && item.to !== '/payments').map((item) => (
               <li key={item.to}>
                 <Link to={item.to} className="flex flex-wrap items-center justify-between gap-2 rounded-md px-2 py-3 text-sm font-medium text-ink hover:bg-paper">
-                  <span>{item.label}</span><span className="text-xs font-normal text-muted">Planned · not available in Phase 5</span>
+                  <span>{item.label}</span><span className="text-xs font-normal text-muted">Planned · not available in Phase 6</span>
                 </Link>
               </li>
             ))}

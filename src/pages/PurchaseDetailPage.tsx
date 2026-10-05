@@ -23,7 +23,7 @@ export function PurchaseDetailPage() {
   const record = purchase.data
   const notice = typeof location.state?.paymentNotice === 'string' ? location.state.paymentNotice : typeof location.state?.purchaseNotice === 'string' ? location.state.purchaseNotice : ''
   return <div className="space-y-7 [overflow-wrap:anywhere]">{back}
-    <PageHeader eyebrow={`Purchase · ${customer.data.name}`} title="Purchase details" description="A permanent record of the items and prices at the time of purchase. Saved purchases cannot be edited or deleted." />
+    <PageHeader eyebrow={`Purchase · ${customer.data.name}`} title="Purchase details" description="A permanent record of the items and prices at the time of purchase. Saved purchases cannot be edited or deleted." actions={<Link to={`/customers/${uuid}/purchases/${record.uuid}/invoice`} className="inline-flex h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-medium text-ink hover:bg-paper">View invoice</Link>} />
     {notice ? <p className="rounded-md border border-line bg-white px-4 py-3 text-sm text-ink" role="status">{notice}</p> : null}
     <Card><CardHeader><CardTitle>Recorded purchase</CardTitle></CardHeader><CardContent><dl className="space-y-4 text-sm sm:grid sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-x-6 sm:gap-y-4 sm:space-y-0">
       <dt className="text-muted">Purchase UUID</dt><dd className="font-mono text-xs leading-6 text-ink">{record.uuid}</dd>

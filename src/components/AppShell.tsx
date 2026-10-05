@@ -105,7 +105,7 @@ export function AppShell() {
   const closeMobile = () => setMobilePath(null)
 
   return (
-    <div className="min-h-screen bg-paper">
+    <div className="app-shell min-h-screen bg-paper">
       <a href="#main-content" className="sr-only z-50 rounded-md bg-white px-4 py-3 text-sm text-ink focus:not-sr-only focus:fixed focus:left-3 focus:top-3">Skip to main content</a>
       <aside className="fixed inset-y-0 left-0 hidden w-60 border-r border-line bg-white lg:block"><SidebarContent /></aside>
       {/* Native modal dialogs make the background inert, contain keyboard focus,
@@ -129,14 +129,14 @@ export function AppShell() {
         </button>
         {mobileOpen ? <SidebarContent mobile onNavigate={closeMobile} /> : null}
       </dialog>
-      <div className="lg:pl-60">
+      <div className="app-content lg:pl-60">
         <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-line bg-white px-4 sm:px-6 lg:hidden">
           <Brand />
           <button ref={openButtonRef} type="button" className="flex size-10 items-center justify-center rounded-md text-ink hover:bg-paper" onClick={() => setMobilePath(location.pathname)} aria-label="Open navigation" aria-haspopup="dialog" aria-controls="mobile-navigation" aria-expanded={mobileOpen}>
             <Menu className="size-5" aria-hidden="true" />
           </button>
         </header>
-        <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-10 lg:py-10"><Outlet /></main>
+        <main id="main-content" tabIndex={-1} className="app-main mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:px-10 lg:py-10"><Outlet /></main>
       </div>
     </div>
   )

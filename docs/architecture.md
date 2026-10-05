@@ -2,7 +2,7 @@
 
 ## Repository assessment
 
-The requested directory was initially empty apart from harness metadata; it was not then a Git repository. Phases 1–4 are committed through `cd0e82c`. Phase 4 began with partial purchase backend scaffolding, which was reviewed and completed. Phase 5 began from that clean committed checkpoint and adds payments/credit; its changes are uncommitted. The local D1 owner, customer and prescription records are preserved through local migrations; interim activity is not reset to an older snapshot. There is no existing production database in this workspace. No remote migration, account provisioning, production deployment, or restore has been performed.
+The requested directory was initially empty apart from harness metadata; it was not then a Git repository. Phases 1–5 are committed through `d474280`. Phase 6 began from a clean committed checkpoint and adds invoice generation/printing; its changes are uncommitted. The local D1 owner, customer and prescription records are preserved through local migrations; interim activity is not reset to an older snapshot. There is no existing production database in this workspace. No remote migration, account provisioning, production deployment, or restore has been performed.
 
 ## Deployment unit
 
@@ -21,11 +21,11 @@ src/                    React application
   lib/                  In-memory API client, formatting, navigation
 worker/
   index.ts              Central authentication/security/error boundary
-  routes/               Blaze auth, customer, prescription, purchase and payment registration
+  routes/               Blaze auth, customer, prescription, purchase, payment and invoice registration
   validators/           Strict backend path/query schemas
-  services/             Atomic audits, immutable clinical/purchase/payment writes and derived credit
+  services/             Atomic audits, immutable business/invoice snapshots, numbering and derived credit
   lib/                  Web Crypto, HTTP, D1 and money helpers
-shared/                 Contracts, phone/clinical/purchase/payment validation, exact money and UTC helpers
+shared/                 Contracts/validation, exact money and UTC helpers
 migrations/             Append-only SQL migration files
 public/_headers         Security headers for assets served without the Worker
 test/                   Workerd/D1 integration and utility tests
@@ -35,7 +35,7 @@ docs/                   Architecture, phase reports, deployment/recovery runbook
 
 ## Data relationships
 
-Existing 0001/0002 migrations created the business foundation; 0003 adds integrity corrections. Phase 2 appends 0004 to reconcile customer names/required canonical phones while preserving existing records and child foreign keys. Phase 3 appends 0005 with prescription lineage/near-PD fields and immutable-row guards. Phase 4 appends 0006 with purchase submission/audit anchors, item-set completeness and immutable snapshots. Phase 5 appends 0007 with payment submission/audit anchors, immutable concurrent-balance guards and a derived balance view. Migrations 0006/0007 do not rebuild tables or rewrite historical rows. Previously applied migrations remain unchanged.
+Existing 0001/0002 migrations created the business foundation; 0003 adds integrity corrections. Phase 2 appends 0004 for canonical customers, Phase 3 appends 0005 for immutable prescription lineage, Phase 4 appends 0006 for complete immutable purchase snapshots and Phase 5 appends 0007 for immutable payments/derived balances. Phase 6 appends 0008 for permanent number reservations and immutable invoice snapshots without rebuilding or rewriting any original table. Previously applied migrations remain unchanged.
 
 - `admin_users` has one enforced singleton owner. The initial schema contains a legacy role column, but migrations restrict it to owner and neither UI nor API implements roles/staff.
 - Owner → many `sessions`. Only HMAC token hashes are stored. The cookie token is 256 random bits. Twelve-hour absolute expiration; logout revokes the current session, password change revokes every active session.
@@ -44,10 +44,11 @@ Existing 0001/0002 migrations created the business foundation; 0003 adds integri
 - Customer → multiple prescription roots and immutable linked versions. Existing `prescriptions(id)` stays stable, with `customer_id` referencing `customers(uuid)`; JSON exposes UUID aliases. Each chain has one current head, not one clinically approved prescription per customer.
 - Purchase → one or more immutable line items; optional reference to a specific immutable prescription version of the same customer; many immutable payments. Purchase totals and original timestamps never change when a payment is recorded.
 - Payment → one purchase/customer and one creation audit for new records. Legacy reversal events remain preserved, but new reversal/refund operations are disabled and posted legacy reversals require review before a balance is shown.
+- Purchase → at most one Phase 6 invoice, with immutable minimal customer/shop/item/tax/financial/payment-at-issue snapshots and an audited number reservation. No invoice fields are assigned onto the immutable purchase header.
 - Audit events are append-only with update/delete guards.
 - `auth_rate_limits` holds HMAC-scoped short-lived throttle counters.
 
-Financial values use integer paise; legacy tax rates use integer basis points. Financial calculations use safe integers/BigInt intermediates, not decimal floating-point arithmetic. Phase 4 computes gross subtotals, fixed discounts and grand totals with no tax/invoice operation. Phase 5 derives payment status and outstanding from stored totals and settled, nondeleted payments, without a mutable cache. Future invoice writes require explicit approval and must snapshot shop/customer/tax details, use permanent globally unique invoice numbers and preserve purchase snapshots. Refund/reversal semantics and invoice workflows are **not implemented**; unsupported posted legacy reversals fail closed.
+Financial values use integer paise; legacy tax rates use integer basis points. Financial calculations use safe integers/BigInt intermediates, not decimal floating-point arithmetic. Phase 4 computes gross subtotals/discounts/grand totals without tax calculation; Phase 5 derives live payment status/outstanding from settled, nondeleted payments. Phase 6 copies those persisted facts into an immutable invoice, never recalculating or changing the purchase. Tax/HSN/GST values are displayed only when actually recorded/configured; no tax engine or legal-compliance claim is introduced. Refund/reversal semantics remain disabled; unsupported posted legacy reversals fail closed.
 
 ## Phase 1 security
 
@@ -79,7 +80,7 @@ All prescription routes are nested under an existing customer UUID. Item/history
 
 Shared Zod validation stores optional exact decimal strings/nulls, preserving unknown versus explicit zero. Signed SPH/CYL/ADD use diopters; AXIS is optional 0–180 degrees under the established schema; supplied positive distance/near/monocular PD uses mm. Required real prescription dates and optional nonpreceding expiry/recheck dates are validated. No quarter-step rule, typical-age PD range, clinical recommendation or inferred measurement is introduced. New entries/revisions support spectacle prescriptions; legacy other types remain readable. Two fractional digits/six whole digits are an explicit technical encoding bound; higher-precision legacy text is not silently normalized.
 
-Customer profiles/details expose paginated history and immutable original/replacement links. Native dirty-form protections and in-memory query/CSRF conventions are reused; there is no browser persistence, upload or external service. `/prescriptions` guides the owner to an existing customer. Invoices/reports remain deferred. See [Phase 3 report](phase-three.md) for clinical references, schema, endpoints, tests and limitations.
+Customer profiles/details expose paginated history and immutable original/replacement links. Native dirty-form protections and in-memory query/CSRF conventions are reused; there is no browser persistence, upload or external service. `/prescriptions` guides the owner to an existing customer. Phase 6 now supplies invoices; reports remain deferred. See [Phase 3 report](phase-three.md) for clinical references, schema, endpoints, tests and limitations.
 
 ## Phase 4 purchase architecture
 
@@ -109,7 +110,23 @@ Payment input reuses the purchase decimal-rupee schema and shared exact money he
 
 Customer profiles show total credit and purchase statuses; purchase details show paid/outstanding and paginated individual history. Record Payment is conditional on eligibility. Forms reuse React Hook Form/Zod, synchronous locking and native dirty guards. Stable in-memory UUIDs allow failed/lost-response retries; duplicates return safe 409 even after full settlement. Duplicate/overpayment errors refresh authoritative queries while preserving feedback/drafts; success invalidates all customer purchase/payment/credit queries. Archived customers remain readable and must be restored to record payments. Credit means purchase debt, not a wallet or lending facility. See [Phase 5 report](phase-five.md) and [test coverage](../test/README.md).
 
-Verified locally: **1,004 workerd/D1 tests in 23 files; 27 real-backend Chromium scenarios** at desktop/mobile; TypeScript/lint/build and dependency audit passed. Local 0007 applied in 15 commands, repeated with nothing pending. Private before/after comparison preserved every original row/column/rowid, earlier migrations/private variables, and clean FKs/quick check. No persistent development fixture data was created.
+At the Phase 5 checkpoint: **1,004 workerd/D1 tests in 23 files; 27 real-backend Chromium scenarios** at desktop/mobile; TypeScript/lint/build and dependency audit passed. Local 0007 applied in 15 commands, repeated with nothing pending. Private before/after comparison preserved every original row/column/rowid, earlier migrations/private variables, and clean FKs/quick check. No persistent development fixture data was created.
+
+## Phase 6 invoice architecture
+
+Migration 0008 adds two strict tables because Phase 4 deliberately forbids assigning an invoice number or snapshot onto an old purchase. `invoices` has unique UUID/purchase/number/reservation, customer/purchase/reservation/owner FKs, issued time, versioned snapshot JSON and a unique deferred restrictive creation-audit FK. `invoice_number_reservations` permanently holds number/sequence, purchase/customer/shop, submission key, owner/time and deferred audit anchor. Both reject UPDATE/DELETE/no-op/REPLACE. Cross-namespace INSERT guards also prevent collision with legacy `purchases.invoice_number`; historical numbered purchases are preserved and cannot be automatically regenerated.
+
+Numbering reuses existing `shop_settings.invoice_prefix`, `next_invoice_number` and padding and matches the established `invoiceNumber()` format (`INV-0001` by default). A reservation INSERT validates the current counter and advances it in an AFTER trigger within the same D1 transaction. Sequence values and formatted numbers are unique; the counter cannot move backward. Only `never` reset is supported; financial-year reset and legacy/restore conflicts fail closed for explicit reconciliation. Reservation+minimal audit+read commit in one three-statement batch; invoice+minimal audit+read commit in a separate three-statement batch. An issue failure retains its committed number/reservation/audit. Gaps are intentional. A failed reservation transaction allocates nothing and exposes no document. Restore procedures must reconcile externally printed records and advance beyond all retained/printed/reserved/legacy numbers before reopening writes.
+
+Generation is explicit and once per purchase; unpaid/partially paid purchases qualify because Phase 4 records are complete immutable transactions, despite an internal `draft` tag. Same-purchase retries reuse an existing invoice with 200, including lost-response retries; first creation returns 201. Concurrent independent attempts can reserve more than one number but only one invoice commits, and unused numbers remain permanently reserved. A reused key with no issued invoice returns `INVOICE_GENERATION_INCOMPLETE`; the UI explicitly offers generation with a new number. Synchronous frontend locking retains the key across uncertain network failures. Archived customers require restoration for first issuance, while issued invoices remain readable.
+
+`invoice_source_snapshots` copies authoritative persisted data inside the issue transaction: shop name/address/contact/GSTIN/footer, customer name/phone, fixed purchase/date/minimal prescription UUID, stored financial/tax fields, ordered original item descriptions/categories/quantities/prices/discounts/taxes/HSN/totals, and Phase 5 paid/outstanding/status plus effective payment count/method totals. Issue time uses the database clock inside the INSERT; the audit copies that persisted timestamp, avoiding an early as-of time from a queued request. The INSERT guard compares the supplied snapshot exactly with that view and rejects unsafe/inconsistent money or empty/oversized item sets. No client financial fields are accepted. Customer address is optional legacy data not required by the application, so it is excluded, as are clinical measurements, notes and payment references. Later identities/payments/settings do not change a reprint. Historical retrieval verifies customer/purchase ownership without querying a live balance read model.
+
+Blaze APIs: GET/POST `/api/customers/:customerUuid/purchases/:purchaseUuid/invoice`; authenticated GET/PATCH `/api/shop/invoice-identity` reuses only existing shop name/address/contact/GSTIN fields. No second settings store or numbering/tax preference API exists. The identity edit uses a concurrency timestamp and conditional audit in one batch. Invoice/number audits store owner/request, IDs, number and event time without copying contacts/clinical values. All routes reuse the established session/Origin/CSRF, strict JSON/UUID, parameterized SQL, response-envelope/no-store/security conventions.
+
+The React invoice page is nested under the existing authenticated shell and opened from purchase details. It reads the permanent snapshot and provides native `window.print()`. A4 portrait CSS uses 14 mm margins, removes shell/navigation/buttons/background, restores a fixed-width compact table with repeated headers, avoids row/header/customer/totals splits, wraps long text and removes application width/spacing restrictions. Screen-only small-width rows become labelled cards; print always uses the table. Browser headers/footers/scaling are controlled by the print dialog, not silently overridden.
+
+Verification: **1,031 workerd/D1 tests across 26 files; 33 real-backend Chromium scenarios**. Six invoice cases invoke native print and produce real A4 PDFs, checking metadata/text/every page's rasterized ink bounds, all 100 items, repeated headers, final totals and excluded application chrome. Short output and first/last pages of the eight-page desktop invoice, plus mobile view, were visually inspected. Poppler tools already installed in the environment perform PDF inspection; no npm/runtime dependency was added. Local 0008 applied in 16 commands, repeat/integrity and private full-row/column/rowid/hash preservation checks passed. See [Phase 6 report](phase-six.md).
 
 ## Verification and delivery gates
 
@@ -118,11 +135,11 @@ Verified locally: **1,004 workerd/D1 tests in 23 files; 27 real-backend Chromium
 3. Prescriptions: separate OD/OS fields, parameter ranges, optional values, dated history, audit edits.
 4. Purchases only: exact multi-item totals, immutable snapshots, optional fixed prescription link, atomic audits/rollback, duplicate protection and customer history. Invoice/tax/print workflows remain separately gated.
 5. Payments/credit only: immutable atomic audited payments, concurrent overpayment prevention, duplicate protection, derived balances/status and customer debt. Refunds/reversals and invoice corrections require separate approval.
-6. Dashboard/reports/exports: Indian business date boundaries, actual collections versus sales, pagination, exports with useful headers and CSV-formula defenses.
+6. Invoice generation/printing only: unique audited sequential reservations, immutable authoritative snapshots, safe retries/hierarchy and actual responsive A4/multi-page output. Reports/CSV exports/analytics are outside the approved scope.
 7. Settings/security/recovery: editable shop and invoice configuration, audited changes, backup round-trip, security review.
 8. Production: explicit approval, isolated staging account/database, remote free-tier CPU checks, migrations/backup, secret bootstrap, deployment, end-to-end acceptance.
 
-Each phase ends with a tested change report, outstanding issues, and staging/commit commands. Until those gates pass, future modules show honest phase notices and no unverified business endpoint is active.
+Each phase ends with a tested change report, outstanding issues, and staging/commit commands. Phase 6 is complete; stop and await explicit Phase 7 approval. Until later gates pass, future modules show honest notices and no unverified business endpoint is active. Any later reports/exports must separately verify business-date boundaries, actual collections versus sales, pagination and CSV-formula defenses.
 
 ## Verified platform limits and constraints
 

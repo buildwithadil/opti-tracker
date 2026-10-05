@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Field, TextInput } from '../components/ui/Field'
 import { ErrorState, LoadingState } from '../components/ui/States'
 import { PageHeader } from '../components/ui/PageHeader'
+import { InvoiceIdentityForm } from '../components/InvoiceIdentityForm'
 
 const passwordSchema = z.object({
   currentPassword: z.string().min(1, 'Enter your current password.').max(256, 'Use no more than 256 characters.'),
@@ -45,7 +46,7 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-7">
-      <PageHeader eyebrow="Phase 1" title="Settings" description="View the shop identity and manage the administrator password." />
+      <PageHeader eyebrow="Settings" title="Settings" description="Manage invoice business information and the administrator password." />
       <Card>
         <CardHeader><CardTitle>Shop and administrator</CardTitle></CardHeader>
         <CardContent>
@@ -58,11 +59,12 @@ export function SettingsPage() {
                 <dt className="text-muted">Administrator name</dt><dd className="break-words font-medium text-ink">{administrator?.name}</dd>
                 <dt className="text-muted">Administrator email</dt><dd className="break-words font-medium text-ink">{identity.data.administratorEmail}</dd>
               </dl>
-              <p className="mt-5 text-xs leading-5 text-muted">Shop configuration and invoice preferences will become editable in Phase 7.</p>
+              <p className="mt-5 text-xs leading-5 text-muted">Invoice business information is available below. Broader shop, numbering and tax preferences remain a later phase.</p>
             </>
           ) : null}
         </CardContent>
       </Card>
+      <InvoiceIdentityForm />
       <Card>
         <CardHeader><CardTitle>Change password</CardTitle></CardHeader>
         <CardContent>

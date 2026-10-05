@@ -13,6 +13,7 @@ import { PrescriptionDetailPage } from './pages/PrescriptionDetailPage'
 import { PurchaseCreatePage } from './pages/PurchaseFormPage'
 import { PurchaseDetailPage } from './pages/PurchaseDetailPage'
 import { PaymentCreatePage } from './pages/PaymentFormPage'
+import { InvoicePage } from './pages/InvoicePage'
 import { PaymentsPage, PrescriptionsPage, PurchasesPage, ReportsPage } from './pages/WorkspacePages'
 import { SettingsPage } from './pages/SettingsPage'
 
@@ -53,6 +54,7 @@ export function App() {
           <Route path="customers/:uuid/purchases/new" element={<PurchaseCreatePage />} />
           <Route path="customers/:uuid/purchases/:purchaseUuid" element={<PurchaseDetailPage />} />
           <Route path="customers/:uuid/purchases/:purchaseUuid/payments/new" element={<PaymentCreatePage />} />
+          <Route path="customers/:uuid/purchases/:purchaseUuid/invoice" element={<InvoicePage />} />
           <Route path="purchases" element={<PurchasesPage />} />
           <Route path="prescriptions" element={<PrescriptionsPage />} />
           <Route path="payments" element={<PaymentsPage />} />

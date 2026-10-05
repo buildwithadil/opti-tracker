@@ -1,6 +1,6 @@
 # Deployment prerequisites — not yet executed
 
-OptiDesk Phases 1–3 are locally verified. A complete business release and production deployment have not been approved or performed.
+OptiDesk Phases 1–6 are locally verified. A complete business release and production deployment have not been approved or performed. Phase 6 implements invoices/printing only; reports and CSV exports remain unavailable.
 
 ## Before any remote operation
 
@@ -44,7 +44,9 @@ After approval and a fresh independent database export, review all active and ar
 
 Phase 3's 0005 migration preserves existing prescription payloads/UUID references and adds irreversible ordinary-application UPDATE/DELETE guards. Review clinical precision/type/retention needs and backups before applying to another populated database. Revisions append replacement rows; there is no hard-delete maintenance UI.
 
-Migration/deployment commands (not executed remotely through Phase 3):
+Phase 4/5's 0006/0007 preserve immutable purchase/payment rows. Phase 6's 0008 adds immutable invoices and number reservations without rewriting source rows or shop counters. Verify actual shop identity before issuing; only never-reset numbering is supported. After a restore, reconcile both legacy purchase invoice numbers and the reservation ledger with externally printed documents, then advance the existing shop counter before reopening writes. See the [Phase 6 report](phase-six.md) and [recovery runbook](backup-and-restore.md).
+
+Migration/deployment commands (not executed remotely through Phase 6):
 
 ```bash
 npx wrangler d1 migrations list <approved-database-name> --remote

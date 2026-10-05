@@ -54,14 +54,14 @@ export function installDatabaseHooks(): void {
   })
   beforeEach(async () => {
     const { results: triggers } = await bindings.DB.prepare(`SELECT name, sql FROM sqlite_master
-      WHERE type = 'trigger' AND name IN ('audit_logs_immutable_delete', 'purchases_no_hard_delete', 'purchases_immutable_update', 'purchases_immutable_delete', 'purchase_items_immutable_update', 'purchase_items_immutable_delete', 'payments_immutable_delete', 'payment_reversals_immutable_delete', 'customers_no_hard_delete', 'prescriptions_immutable_delete')`)
+      WHERE type = 'trigger' AND name IN ('audit_logs_immutable_delete', 'purchases_no_hard_delete', 'purchases_immutable_update', 'purchases_immutable_delete', 'purchase_items_immutable_update', 'purchase_items_immutable_delete', 'payments_immutable_delete', 'payment_reversals_immutable_delete', 'invoices_immutable_delete', 'invoice_reservations_immutable_delete', 'customers_no_hard_delete', 'prescriptions_immutable_delete')`)
       .all<{ name: string; sql: string }>()
     for (const trigger of triggers) {
       await bindings.DB.prepare(`DROP TRIGGER "${trigger.name}"`).run()
     }
     try {
       // Child-first deletion keeps foreign-key enforcement enabled throughout.
-      for (const table of ['payment_reversals', 'payments', 'purchase_items', 'purchases', 'audit_logs']) {
+      for (const table of ['invoices', 'invoice_number_reservations', 'payment_reversals', 'payments', 'purchase_items', 'purchases', 'audit_logs']) {
         await bindings.DB.prepare(`DELETE FROM ${table}`).run()
       }
       // Only this isolated test binding is cleaned. Remove descendants before

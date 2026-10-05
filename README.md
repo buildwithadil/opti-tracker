@@ -2,7 +2,7 @@
 
 A single-owner optical shop application built with React/TypeScript, a Blaze REST API in Cloudflare Workers, and Cloudflare D1.
 
-**Current scope: Phases 1–5, authentication, customers, prescriptions, purchases, payments and outstanding credit.** Customers can be created, searched, edited, archived and restored. Customer-linked spectacle prescriptions can be recorded, viewed and revised with immutable history. Purchases record multiple optical items, original price snapshots, exact totals and an optional prescription version. Immutable Cash/UPI/Card payments support partial and full settlement with server-derived balances. Invoices, dashboard metrics, reports, exports and editable shop configuration remain future gated phases. This is not yet a complete optical shop application or a production deployment. **Phase 6 has not started.**
+**Current scope: Phases 1–6, authentication, customers, prescriptions, purchases, payments, credit and invoice generation/printing.** Purchases and payments retain immutable financial history. Each purchase can generate one permanent invoice with original customer/shop/item/totals and payment position at issue, using the existing shop sequence. Desktop/mobile invoice views support A4 printing. Dashboard metrics, reports/CSV exports and broader shop preferences remain future gated work. This is not yet a complete optical shop application or a production deployment. **Phase 7 has not started.**
 
 See [PROJECT_STATUS.md](PROJECT_STATUS.md) for the current verification and handoff.
 
@@ -67,6 +67,16 @@ Payments cannot be edited or deleted. Database guards prevent concurrent overpay
 
 Migration `0007_payment_management.sql` extends the existing payment ledger with submission/audit anchors, indexes, immutable guards and a balance view. It has been applied to this workspace's existing local D1 after private before/after preservation checks. Unsupported legacy financial/reversal data produces a safe review-required error rather than an invented or clamped balance. See [Phase 5 report](docs/phase-five.md) for exact rules, endpoints, concurrency, audits, limitations and verified results.
 
+## Invoice generation and printing
+
+Complete **Settings → Invoice business information** with the actual shop name, address, contact number and optional GSTIN. This updates only the existing shop fields; numbering/tax preferences remain outside this phase. Then open a purchase, select **View invoice**, and explicitly **Generate invoice**. A saved Phase 4 purchase is eligible even when unpaid or partially paid; its internal `draft` field is not an editable draft. Archived customers must be restored before first generation but retain access to issued invoices.
+
+Generation reserves a unique sequential number from existing shop configuration and creates one immutable invoice per purchase. Retries after success reuse it, including a lost response. Committed number reservations remain consumed if issuing fails; gaps are audited and numbers are not silently reused. Only the existing `never` reset policy is supported. Historical number collisions/restores require sequence reconciliation as documented in the [recovery runbook](docs/backup-and-restore.md).
+
+Invoices preserve shop/customer identity, original items/discounts/totals, a minimal optional prescription UUID and the payment position **at issue**. Later customer/shop changes or additional payments do not change a reprint. Current balances remain on purchase details. Customer addresses, clinical measurements and private notes/payment references are excluded. Tax amounts/rates appear only when actually recorded on the purchase/items; new Phase 4 purchases have no tax. No tax engine or legal GST-compliance claim is introduced.
+
+Use **Print invoice** for native A4 portrait printing with 14 mm margins, repeated table headers and no application navigation/buttons. Choose A4, default/100% scaling, and disable browser-generated headers/footers in the print dialog. Short documents and 100-item multi-page PDFs were verified in Chromium. Migration `0008_invoice_management.sql` has been applied locally with private preservation checks. See the [Phase 6 report](docs/phase-six.md) for numbering, snapshots, APIs, actual checks and limitations.
+
 ## Quality checks
 
 ```bash
@@ -84,7 +94,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Test credentials in `e2e/` are fixtures only, not production defaults. No tests access a remote database. Browser test state is isolated in a temporary directory; failures and screenshots are ignored in `test-results/`.
+Invoice print assertions additionally require the free Poppler tools `pdfinfo`, `pdftotext` and `pdftoppm` on `PATH`; they inspect actual PDF page geometry/text and rasterized ink margins. These tools were already installed in the verification environment. Test credentials in `e2e/` are fixtures only, not production defaults. No tests access a remote database. Browser test state is isolated in a temporary directory; failures, PDFs and screenshots are ignored in `test-results/`.
 
 ## Production is not yet approved
 
@@ -94,8 +104,8 @@ Before production use, complete the later phases and run the full acceptance sui
 
 ## Backup and recovery
 
-No automated external backup is currently configured. D1 Free Time Travel provides seven days of automatic point-in-time recovery but is not an independent backup. Recommended daily SQL exports, private storage, and restore verification are documented in [docs/backup-and-restore.md](docs/backup-and-restore.md). CSV exports will be implemented through the authenticated API in Phase 6.
+No automated external backup is currently configured. D1 Free Time Travel provides seven days of automatic point-in-time recovery but is not an independent backup. Recommended daily SQL exports, private storage, invoice-sequence reconciliation and restore verification are documented in [docs/backup-and-restore.md](docs/backup-and-restore.md). Reports and CSV exports are outside the approved Phase 6 scope and remain unavailable.
 
 ## Phase reports
 
-[Phase 1](docs/phase-one.md), [Phase 2](docs/phase-two.md), [Phase 3](docs/phase-three.md) and [Phase 4](docs/phase-four.md) are historical checkpoints. Phase 4 is committed as `cd0e82c`. [Phase 5](docs/phase-five.md) records payments/credit, **1,004 passing workerd/D1 tests and 27 passing Chromium scenarios**, preservation checks, limitations and exact Git staging/commit commands. All Phase 1–4 regression suites passed. Phase 5 is uncommitted; Phase 6 has not started.
+[Phase 1](docs/phase-one.md), [Phase 2](docs/phase-two.md), [Phase 3](docs/phase-three.md), [Phase 4](docs/phase-four.md) and [Phase 5](docs/phase-five.md) are historical checkpoints. Phases 1–5 are committed through `d474280`. [Phase 6](docs/phase-six.md) records invoice generation/printing, **1,031 passing workerd/D1 tests and 33 passing Chromium scenarios**, including all Phase 1–5 regressions, real A4/multi-page output, preservation checks and exact Git commands. Phase 6 is uncommitted; Phase 7 has not started.

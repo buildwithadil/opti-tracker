@@ -61,7 +61,7 @@ for (const viewport of [{ label: 'Desktop', width: 1440, height: 960, suffix: '1
     expect(purchase.items).toHaveLength(2)
     await expect(page).toHaveURL(new RegExp(`/customers/${profile.uuid}/purchases/${purchase.uuid}$`, 'u'))
     await expect(page.getByRole('heading', { name: 'Purchase details', exact: true })).toBeVisible()
-    await expect(page.getByRole('status')).toContainText('Purchase saved.')
+    await expect(page.getByRole('status').filter({ hasText: 'Purchase saved.' })).toContainText('Purchase saved.')
     await expect(page.getByTestId('purchase-grand-total')).toHaveText('₹249.79')
     await expect(page.getByRole('list', { name: 'Purchase items', exact: true }).getByRole('listitem')).toHaveCount(2)
     await expect(page.getByRole('link', { name: /View linked prescription/u })).toHaveAttribute('href', `/customers/${profile.uuid}/prescriptions/${prescription.uuid}`)

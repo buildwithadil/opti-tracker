@@ -100,6 +100,6 @@ test('owner setup, real sessions, navigation, password change, and mobile access
   expect(failures).toEqual([])
   expect([...apiPaths].every(path => [
     '/api/auth/session', '/api/auth/setup', '/api/auth/login',
-    '/api/auth/logout', '/api/auth/change-password', '/api/shop/identity', '/api/customers',
+    '/api/auth/logout', '/api/auth/change-password', '/api/shop/identity', '/api/shop/invoice-identity', '/api/customers',
   ].includes(path))).toBe(true)
 })

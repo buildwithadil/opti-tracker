@@ -9,6 +9,7 @@ import { registerCustomers } from './routes/customers.js'
 import { registerPrescriptions } from './routes/prescriptions.js'
 import { registerPurchases } from './routes/purchases.js'
 import { registerPayments } from './routes/payments.js'
+import { registerInvoices } from './routes/invoices.js'
 
 const app = createApp<Env>()
 const publicPaths = new Set(['/api/health', '/api/auth/session', '/api/auth/setup', '/api/auth/login'])
@@ -74,6 +75,7 @@ registerCustomers(app, route)
 registerPrescriptions(app, route)
 registerPurchases(app, route)
 registerPayments(app, route)
+registerInvoices(app, route)
 app.onError((error, req, res) => handleError(error, req as RequestWithAuth, res))
 app.notFound((req, res) => {
   sendResponse(res, apiFailure('NOT_FOUND', 'The requested resource was not found.', { status: 404, meta: { requestId: req.id } }))

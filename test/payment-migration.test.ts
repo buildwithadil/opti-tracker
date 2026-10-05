@@ -21,7 +21,7 @@ describe('0007 real-D1 populated migration preserves all historical data', () =>
     const tables = ['admin_users','customers','prescriptions','purchases','purchase_items','payments','payment_reversals','audit_logs']
     const baseline = await Promise.all(tables.map(rows))
     const rootPages = (await bindings.DB.prepare("SELECT name,rootpage FROM sqlite_master WHERE type='table' AND name IN ('payments','purchases','purchase_items') ORDER BY name").all()).results
-    await applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS)
+    await applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS.slice(0, 7))
     const expected = baseline.map((records, index) => tables[index] === 'payments' ? records.map(row => ({ ...row, client_request_id: null, creation_audit_id: null })) : records)
     expect(await Promise.all(tables.map(rows))).toEqual(expected)
     expect((await bindings.DB.prepare("SELECT name,rootpage FROM sqlite_master WHERE type='table' AND name IN ('payments','purchases','purchase_items') ORDER BY name").all()).results).toEqual(rootPages)
@@ -29,7 +29,7 @@ describe('0007 real-D1 populated migration preserves all historical data', () =>
     expect((await bindings.DB.prepare('PRAGMA foreign_key_check').all()).results).toEqual([])
     expect((await bindings.DB.prepare('PRAGMA foreign_key_list(payments)').all()).results).toContainEqual(expect.objectContaining({ table: 'audit_logs', from: 'creation_audit_id', to: 'id' }))
     expect(await getPurchase(bindings.DB, 'legacy', 'legacy-sale')).toMatchObject({ total_paise: 10000, amount_paid_paise: 1000, outstanding_paise: 9000, payment_status: 'partially_paid' })
-    await applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS)
+    await applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS.slice(0, 7))
     expect(await Promise.all(tables.map(rows))).toEqual(expected)
     for (const table of ['payments','payment_reversals','purchases','purchase_items']) {
       await expect(bindings.DB.prepare(`UPDATE ${table} SET id=id`).run()).rejects.toThrow(/immutable/u)
@@ -41,7 +41,7 @@ describe('0007 real-D1 populated migration preserves all historical data', () =>
     await bindings.DB.prepare("INSERT INTO payments(id,purchase_id,customer_id,amount_paise,payment_method) VALUES ('old-payment','sale','legacy',?,'cash')").bind(kind === 'overpaid' ? 10001 : kind === 'fractional' ? 0.5 : 1000).run()
     if (kind === 'reversed') await bindings.DB.prepare("INSERT INTO payment_reversals(id,payment_id,amount_paise,reason) VALUES ('old-reversal','old-payment',100,'Legacy posted correction')").run()
     const baseline = await rows('payments')
-    await applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS)
+    await applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS.slice(0, 7))
     expect(await rows('payments')).toEqual(baseline.map(row => ({ ...row, client_request_id: null, creation_audit_id: null })))
     await expect(getPurchase(bindings.DB, 'legacy', 'sale')).rejects.toMatchObject({ code: 'FINANCIAL_DATA_INVALID' })
     await expect(customerCreditSummary(bindings.DB, 'legacy')).rejects.toMatchObject({ code: 'FINANCIAL_DATA_INVALID' })

@@ -7,7 +7,7 @@ function FutureModulePage({ title, description, scope }: { title: string; descri
     <div className="space-y-7">
       <PageHeader eyebrow="Future module" title={title} description={description} />
       <Card>
-        <CardHeader><CardTitle>Not available in Phase 5</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Not available in Phase 6</CardTitle></CardHeader>
         <CardContent className="space-y-4 text-sm leading-6 text-muted">
           <p>Administrator access, account security, customers, prescriptions, purchases and payments are available. This page remains a navigation destination, not an active business module.</p>
           <p>{scope} No records are loaded, and no sample data or editing controls are shown.</p>
