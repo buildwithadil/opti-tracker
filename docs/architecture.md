@@ -2,7 +2,7 @@
 
 ## Repository assessment
 
-The requested directory was initially empty apart from harness metadata; it was not then a Git repository. Phases 1–3 are committed through `e74aa4f`. Phase 4 began with partial, uncommitted purchase backend scaffolding, which was reviewed and completed. The local D1 owner, customer and prescription records are preserved through local migrations; interim activity is not reset to an older snapshot. There is no existing production database in this workspace. No remote migration, account provisioning, production deployment, or restore has been performed.
+The requested directory was initially empty apart from harness metadata; it was not then a Git repository. Phases 1–4 are committed through `cd0e82c`. Phase 4 began with partial purchase backend scaffolding, which was reviewed and completed. Phase 5 began from that clean committed checkpoint and adds payments/credit; its changes are uncommitted. The local D1 owner, customer and prescription records are preserved through local migrations; interim activity is not reset to an older snapshot. There is no existing production database in this workspace. No remote migration, account provisioning, production deployment, or restore has been performed.
 
 ## Deployment unit
 
@@ -21,11 +21,11 @@ src/                    React application
   lib/                  In-memory API client, formatting, navigation
 worker/
   index.ts              Central authentication/security/error boundary
-  routes/               Blaze auth, customer, prescription and purchase registration
+  routes/               Blaze auth, customer, prescription, purchase and payment registration
   validators/           Strict backend path/query schemas
-  services/             Atomic throttle/customer audits and immutable clinical/purchase writes
+  services/             Atomic audits, immutable clinical/purchase/payment writes and derived credit
   lib/                  Web Crypto, HTTP, D1 and money helpers
-shared/                 Contracts, phone/clinical/purchase validation and exact money helpers
+shared/                 Contracts, phone/clinical/purchase/payment validation, exact money and UTC helpers
 migrations/             Append-only SQL migration files
 public/_headers         Security headers for assets served without the Worker
 test/                   Workerd/D1 integration and utility tests
@@ -35,19 +35,19 @@ docs/                   Architecture, phase reports, deployment/recovery runbook
 
 ## Data relationships
 
-Existing 0001/0002 migrations created the business foundation; 0003 adds integrity corrections. Phase 2 appends 0004 to reconcile customer names/required canonical phones while preserving existing records and child foreign keys. Phase 3 appends 0005 with prescription lineage/near-PD fields and immutable-row guards. Phase 4 appends 0006 with purchase submission/audit anchors, item-set completeness and immutable snapshots. Phase 4 does not rebuild tables or rewrite historical rows. Previously applied migrations remain unchanged.
+Existing 0001/0002 migrations created the business foundation; 0003 adds integrity corrections. Phase 2 appends 0004 to reconcile customer names/required canonical phones while preserving existing records and child foreign keys. Phase 3 appends 0005 with prescription lineage/near-PD fields and immutable-row guards. Phase 4 appends 0006 with purchase submission/audit anchors, item-set completeness and immutable snapshots. Phase 5 appends 0007 with payment submission/audit anchors, immutable concurrent-balance guards and a derived balance view. Migrations 0006/0007 do not rebuild tables or rewrite historical rows. Previously applied migrations remain unchanged.
 
 - `admin_users` has one enforced singleton owner. The initial schema contains a legacy role column, but migrations restrict it to owner and neither UI nor API implements roles/staff.
 - Owner → many `sessions`. Only HMAC token hashes are stored. The cookie token is 256 random bits. Twelve-hour absolute expiration; logout revokes the current session, password change revokes every active session.
 - One `shop_settings` row stores identity, optional GSTIN, invoice format/counter, INR currency, default tax configuration, and footer.
 - Customer → many prescriptions and purchases. Customer identity is `uuid`; existing child `customer_id` foreign keys now reference `customers(uuid)`. The partial index on canonical `normalized_phone` applies only where `archived_at IS NULL`. Equivalent Indian mobile inputs cannot bypass active uniqueness, and archived numbers can be reused. Customers are never automatically merged or permanently deleted.
 - Customer → multiple prescription roots and immutable linked versions. Existing `prescriptions(id)` stays stable, with `customer_id` referencing `customers(uuid)`; JSON exposes UUID aliases. Each chain has one current head, not one clinically approved prescription per customer.
-- Purchase → one or more immutable line items; optional reference to a specific immutable prescription version of the same customer. Legacy foundation payment relationships remain in the schema, but payment/invoice operations are not exposed in Phase 4.
-- Payment → many reversal events. The full adjustment/refund semantics are a Phase 5 gate, not currently exposed.
+- Purchase → one or more immutable line items; optional reference to a specific immutable prescription version of the same customer; many immutable payments. Purchase totals and original timestamps never change when a payment is recorded.
+- Payment → one purchase/customer and one creation audit for new records. Legacy reversal events remain preserved, but new reversal/refund operations are disabled and posted legacy reversals require review before a balance is shown.
 - Audit events are append-only with update/delete guards.
 - `auth_rate_limits` holds HMAC-scoped short-lived throttle counters.
 
-Financial values use integer paise; legacy tax rates use integer basis points. Financial calculations use safe integers/BigInt intermediates, not decimal floating-point arithmetic. Phase 4 computes gross subtotals, fixed discounts and grand totals with no tax/invoice/payment operation. Future invoice writes require explicit approval and must snapshot shop/customer/tax details, use permanent globally unique invoice numbers and preserve purchase snapshots. Payment statuses and outstanding values must be derived from effective payment/reversal records. Those later workflows are **not implemented**.
+Financial values use integer paise; legacy tax rates use integer basis points. Financial calculations use safe integers/BigInt intermediates, not decimal floating-point arithmetic. Phase 4 computes gross subtotals, fixed discounts and grand totals with no tax/invoice operation. Phase 5 derives payment status and outstanding from stored totals and settled, nondeleted payments, without a mutable cache. Future invoice writes require explicit approval and must snapshot shop/customer/tax details, use permanent globally unique invoice numbers and preserve purchase snapshots. Refund/reversal semantics and invoice workflows are **not implemented**; unsupported posted legacy reversals fail closed.
 
 ## Phase 1 security
 
@@ -79,7 +79,7 @@ All prescription routes are nested under an existing customer UUID. Item/history
 
 Shared Zod validation stores optional exact decimal strings/nulls, preserving unknown versus explicit zero. Signed SPH/CYL/ADD use diopters; AXIS is optional 0–180 degrees under the established schema; supplied positive distance/near/monocular PD uses mm. Required real prescription dates and optional nonpreceding expiry/recheck dates are validated. No quarter-step rule, typical-age PD range, clinical recommendation or inferred measurement is introduced. New entries/revisions support spectacle prescriptions; legacy other types remain readable. Two fractional digits/six whole digits are an explicit technical encoding bound; higher-precision legacy text is not silently normalized.
 
-Customer profiles/details expose paginated history and immutable original/replacement links. Native dirty-form protections and in-memory query/CSRF conventions are reused; there is no browser persistence, upload or external service. `/prescriptions` guides the owner to an existing customer. Payments/invoices/reports remain deferred. See [Phase 3 report](phase-three.md) for clinical references, schema, endpoints, tests and limitations.
+Customer profiles/details expose paginated history and immutable original/replacement links. Native dirty-form protections and in-memory query/CSRF conventions are reused; there is no browser persistence, upload or external service. `/prescriptions` guides the owner to an existing customer. Invoices/reports remain deferred. See [Phase 3 report](phase-three.md) for clinical references, schema, endpoints, tests and limitations.
 
 ## Phase 4 purchase architecture
 
@@ -95,13 +95,29 @@ Three authenticated Blaze endpoints are nested under `/api/customers/:customerUu
 
 The browser form uses React Hook Form/Zod, dynamic items, optional paginated exact-version prescription choices, live totals, a synchronous submission lock and native dirty-form guards. The required submission UUID is stable for the lifetime of a form, including failed/lost-response retries; a customer/submission unique index returns safe 409 without a second record. Separate forms with independent keys are intentionally not content-deduplicated. Neither drafts nor keys are persisted in browser storage. Customer profiles show filtered, paginated purchase history; details show server totals and permanent snapshots. See [Phase 4 report](phase-four.md).
 
+## Phase 5 payment and credit architecture
+
+Migration 0007 retains `payments(id)` and all original ledger fields, adding nullable `client_request_id` and `creation_audit_id` (deferred restrictive FK to immutable `audit_logs`). Existing rows gain NULL without invented audits. Unique customer/submission and audit indexes, ordered purchase/payment history and a covering partial settled-payment index support the new API. All payment UPDATE/DELETE, including no-ops, and primary-key/submission-key REPLACE attempts are guarded. The existing reversal table is preserved but accepts no new writes or edits/deletes.
+
+Creation uses four prepared statements in one transactional D1 `batch()`: payment insert, minimal creation audit, persisted payment response and derived purchase summary. Preliminary reads only establish customer/purchase context. The INSERT trigger checks current outstanding **inside the serialized write transaction**, so concurrent independent requests cannot commit payments whose sum exceeds the total. It also checks customer ownership/active state, payable purchase/currency, positive safe integer money, method, UTC date and the new audit anchor. The audit trigger binds entity/action/owner/timestamp to the inserted payment; the deferred FK rejects a payment whose audit is skipped. Later failures roll back both payment and audit.
+
+`purchase_payment_balances` derives paid from settled, nondeleted payments, outstanding as stored total minus paid, and paid/unpaid/partially-paid status. Equality is checked first, so a zero-total purchase is paid. The public purchase read/create responses gain those fields without updating headers or items. Inconsistent legacy financial values or posted reversals return `FINANCIAL_DATA_INVALID`; records are never clamped, rounded or rewritten. Customer credit aggregates the entire customer's purchase balances in one SQL read, splitting integer billion-paise components and reconstructing with BigInt to avoid floating aggregation. Totals beyond the existing safe-integer contract return `CREDIT_TOTAL_OUT_OF_RANGE`.
+
+Authenticated Blaze APIs: GET `/api/customers/:customerUuid/credit-summary`; GET/POST `/api/customers/:customerUuid/purchases/:purchaseUuid/payments`; GET the latter path plus `/:paymentUuid`. Every individual lookup binds the full hierarchy. History/count/summary use a common batch snapshot with chronological received-time/created-time/UUID ordering and strict `page`/`pageSize` limits. No payment edit/delete/refund routes exist. Existing Origin/CSRF/session, 16 KiB JSON, safe envelopes/logging and no-store/security conventions apply.
+
+Payment input reuses the purchase decimal-rupee schema and shared exact money helpers. New methods are only Cash/UPI/Card; received time is canonical UTC with milliseconds, defaults to backend now when omitted, cannot be future or precede the purchase date's UTC midnight. The form converts explicit device-local minute precision to UTC. Reference/note are optional and excluded from payment audit JSON, which contains only identities, amount/method and received/created times plus owner/request linkage. UTC and strict query decoding helpers were extracted with existing Worker import contracts preserved.
+
+Customer profiles show total credit and purchase statuses; purchase details show paid/outstanding and paginated individual history. Record Payment is conditional on eligibility. Forms reuse React Hook Form/Zod, synchronous locking and native dirty guards. Stable in-memory UUIDs allow failed/lost-response retries; duplicates return safe 409 even after full settlement. Duplicate/overpayment errors refresh authoritative queries while preserving feedback/drafts; success invalidates all customer purchase/payment/credit queries. Archived customers remain readable and must be restored to record payments. Credit means purchase debt, not a wallet or lending facility. See [Phase 5 report](phase-five.md) and [test coverage](../test/README.md).
+
+Verified locally: **1,004 workerd/D1 tests in 23 files; 27 real-backend Chromium scenarios** at desktop/mobile; TypeScript/lint/build and dependency audit passed. Local 0007 applied in 15 commands, repeated with nothing pending. Private before/after comparison preserved every original row/column/rowid, earlier migrations/private variables, and clean FKs/quick check. No persistent development fixture data was created.
+
 ## Verification and delivery gates
 
 1. Foundation/authentication/design system: typecheck, lint, real D1 migration constraints, auth/security tests, browser login/navigation, build.
 2. Customers: CRUD, phone normalization/uniqueness, partial search, profile, archived-record safety.
 3. Prescriptions: separate OD/OS fields, parameter ranges, optional values, dated history, audit edits.
 4. Purchases only: exact multi-item totals, immutable snapshots, optional fixed prescription link, atomic audits/rollback, duplicate protection and customer history. Invoice/tax/print workflows remain separately gated.
-5. Payments/corrections: idempotent atomic writes, concurrent overpayment prevention, effective reversal ledger, controlled invoice corrections, audit.
+5. Payments/credit only: immutable atomic audited payments, concurrent overpayment prevention, duplicate protection, derived balances/status and customer debt. Refunds/reversals and invoice corrections require separate approval.
 6. Dashboard/reports/exports: Indian business date boundaries, actual collections versus sales, pagination, exports with useful headers and CSV-formula defenses.
 7. Settings/security/recovery: editable shop and invoice configuration, audited changes, backup round-trip, security review.
 8. Production: explicit approval, isolated staging account/database, remote free-tier CPU checks, migrations/backup, secret bootstrap, deployment, end-to-end acceptance.

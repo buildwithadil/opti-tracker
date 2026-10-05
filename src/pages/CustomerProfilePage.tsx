@@ -5,6 +5,7 @@ import { Archive, ArrowLeft, Pencil, RotateCcw } from 'lucide-react'
 import { formatIndianMobile } from '../../shared/phone'
 import { PrescriptionHistory } from '../components/PrescriptionHistory'
 import { PurchaseHistory } from '../components/PurchaseHistory'
+import { CustomerCredit } from '../components/CustomerCredit'
 import { Button } from '../components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { ConfirmationDialog } from '../components/ui/ConfirmationDialog'
@@ -77,6 +78,7 @@ export function CustomerProfilePage() {
         </CardContent>
       </Card>
       <PrescriptionHistory key={record.uuid} customer={record} />
+      <CustomerCredit key={`credit:${record.uuid}`} customerUuid={record.uuid} />
       <PurchaseHistory key={`purchases:${record.uuid}`} customer={record} />
       <ConfirmationDialog
         open={confirmation !== null}

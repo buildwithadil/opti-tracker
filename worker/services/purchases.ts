@@ -4,6 +4,7 @@ import { parseRupeesToPaise } from '../lib/money.js'
 import { runD1Batch } from '../lib/db.js'
 import { HttpError } from '../lib/errors.js'
 import type { PurchaseListOptions } from '../validators/purchases.js'
+import { paymentBalanceColumns, paymentBalanceJoin, validPaymentSummary, type BalanceRow } from './payment-balances.js'
 
 export interface PurchaseActor { adminId: string; requestId: string }
 interface CustomerState { uuid: string; archived_at: string | null }
@@ -11,7 +12,7 @@ interface CustomerState { uuid: string; archived_at: string | null }
 const purchaseColumns = `p.id AS uuid,p.customer_id AS customer_uuid,
   p.prescription_id AS prescription_uuid,COALESCE(p.purchase_date,substr(p.created_at,1,10)) AS purchase_date,
   p.status,p.currency_code,p.subtotal_paise,p.discount_paise,p.taxable_amount_paise,
-  p.tax_paise,p.cgst_paise,p.sgst_paise,p.igst_paise,p.tax_type,p.total_paise,p.notes,p.created_at,p.updated_at`
+  p.tax_paise,p.cgst_paise,p.sgst_paise,p.igst_paise,p.tax_type,p.total_paise,p.notes,p.created_at,p.updated_at,${paymentBalanceColumns}`
 const itemColumns = `i.id AS uuid,i.purchase_id AS purchase_uuid,i.description,i.sku,i.line_type,
   i.product_category,i.hsn_sac_code,i.quantity,i.unit_price_paise,i.discount_paise,
   i.taxable_paise,i.tax_rate_basis_points,i.tax_type,i.tax_paise,i.line_total_paise,
@@ -64,7 +65,10 @@ function prepareAudit(db: D1Database, customerUuid: string, purchaseUuid: string
     .bind(auditUuid, actor.adminId, actor.requestId, now, purchaseUuid, customerUuid)
 }
 
-function publicPurchase(row: Purchase): Purchase { return row }
+function publicPurchase(row: Purchase & BalanceRow): Purchase {
+  const { invalid_payment, legacy_reversal, ...record } = row
+  return { ...record, ...validPaymentSummary({ ...record, invalid_payment, legacy_reversal }) }
+}
 function pageResult(purchases: Purchase[], total: number, query: PurchaseListOptions): PurchaseList {
   return { purchases, pagination: { page: query.page, pageSize: query.pageSize, total, totalPages: Math.max(1, Math.ceil(total / query.pageSize)) } }
 }
@@ -78,26 +82,26 @@ export async function listPurchases(db: D1Database, customerUuid: string, query:
   if (query.category) { conditions.push('EXISTS (SELECT 1 FROM purchase_items AS i WHERE i.purchase_id = p.id AND i.product_category = ?)'); values.push(query.category) }
   const where = conditions.join(' AND ')
   const results = await runD1Batch(db, [
-    db.prepare(`SELECT ${purchaseColumns} FROM purchases AS p
+    db.prepare(`SELECT ${purchaseColumns} FROM purchases AS p ${paymentBalanceJoin}
       WHERE ${where}
       ORDER BY COALESCE(p.purchase_date,substr(p.created_at,1,10)) DESC,p.created_at DESC,p.id ASC LIMIT ? OFFSET ?`)
       .bind(...values, query.pageSize, (query.page - 1) * query.pageSize),
     db.prepare(`SELECT COUNT(*) AS total FROM purchases AS p WHERE ${where}`).bind(...values),
   ])
   const { total } = results[1].results[0] as { total: number }
-  return pageResult(results[0].results as Purchase[], total, query)
+  return pageResult((results[0].results as (Purchase & BalanceRow)[]).map(publicPurchase), total, query)
 }
 
 export async function getPurchase(db: D1Database, customerUuid: string, purchaseUuid: string): Promise<PurchaseDetail> {
   await readCustomer(db, customerUuid)
   const results = await runD1Batch(db, [
-    db.prepare(`SELECT ${purchaseColumns} FROM purchases AS p WHERE p.customer_id = ? AND p.id = ?`)
+    db.prepare(`SELECT ${purchaseColumns} FROM purchases AS p ${paymentBalanceJoin} WHERE p.customer_id = ? AND p.id = ?`)
       .bind(customerUuid, purchaseUuid),
     db.prepare(`SELECT ${itemColumns} FROM purchase_items AS i JOIN purchases AS p ON p.id = i.purchase_id
       WHERE p.customer_id = ? AND p.id = ? ORDER BY i.sort_order ASC,i.id ASC`)
       .bind(customerUuid, purchaseUuid),
   ])
-  const purchase = results[0].results[0] as Purchase | undefined
+  const purchase = results[0].results[0] as (Purchase & BalanceRow) | undefined
   if (!purchase) throw new HttpError(404, 'PURCHASE_NOT_FOUND', 'The purchase was not found for this customer.')
   return { ...publicPurchase(purchase), items: results[1].results as PurchaseItemSnapshot[] }
 }
@@ -138,7 +142,7 @@ export async function createPurchase(db: D1Database, customerUuid: string, input
     .bind(JSON.stringify(prepared.items), customerUuid, purchaseUuid)
   const statements: D1PreparedStatement[] = [header, items]
   statements.push(prepareAudit(db, customerUuid, purchaseUuid, auditUuid, actor, now))
-  statements.push(db.prepare(`SELECT ${purchaseColumns} FROM purchases AS p WHERE p.customer_id = ? AND p.id = ?`).bind(customerUuid, purchaseUuid))
+  statements.push(db.prepare(`SELECT ${purchaseColumns} FROM purchases AS p ${paymentBalanceJoin} WHERE p.customer_id = ? AND p.id = ?`).bind(customerUuid, purchaseUuid))
   statements.push(db.prepare(`SELECT ${itemColumns} FROM purchase_items AS i WHERE i.purchase_id = ? ORDER BY i.sort_order ASC,i.id ASC`).bind(purchaseUuid))
   try {
     const results = await runD1Batch(db, statements)
@@ -147,7 +151,7 @@ export async function createPurchase(db: D1Database, customerUuid: string, input
       await assertPrescription(db, customerUuid, prepared.values.prescription_uuid)
       throw new HttpError(409, 'PURCHASE_NOT_CREATED', 'The purchase could not be created. Please try again.')
     }
-    return { ...(results[results.length - 2].results[0] as Purchase), items: results[results.length - 1].results as PurchaseItemSnapshot[] }
+    return { ...publicPurchase(results[results.length - 2].results[0] as Purchase & BalanceRow), items: results[results.length - 1].results as PurchaseItemSnapshot[] }
   } catch (error) {
     if (error instanceof HttpError) throw error
     if (error instanceof Error && /UNIQUE constraint failed: purchases\.customer_id, purchases\.client_request_id|uq_purchases_customer_submission/u.test(error.message)) {

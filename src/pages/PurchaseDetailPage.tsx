@@ -7,6 +7,8 @@ import { ApiError } from '../lib/api'
 import { customerDate, customerErrorMessage, customerKeys, customersApi } from '../lib/customers'
 import { prescriptionDate } from '../lib/prescriptions'
 import { categoryLabel, purchaseErrorMessage, purchaseKeys, purchaseMoney, purchasesApi } from '../lib/purchases'
+import { PaymentHistory } from '../components/PaymentHistory'
+import { PaymentStatusBadge, PurchasePaymentSummary } from '../components/PaymentSummary'
 
 export function PurchaseDetailPage() {
   const { uuid = '', purchaseUuid = '' } = useParams()
@@ -19,7 +21,7 @@ export function PurchaseDetailPage() {
   if (purchase.isError) return <div className="space-y-5">{back}<ErrorState title={purchase.error instanceof ApiError && purchase.error.status === 404 ? 'Purchase not found' : 'Purchase could not be loaded'} description={purchaseErrorMessage(purchase.error)} onRetry={() => void purchase.refetch()} /></div>
   if (!purchase.data) return <LoadingState label="Loading purchase details…" />
   const record = purchase.data
-  const notice = typeof location.state?.purchaseNotice === 'string' ? location.state.purchaseNotice : ''
+  const notice = typeof location.state?.paymentNotice === 'string' ? location.state.paymentNotice : typeof location.state?.purchaseNotice === 'string' ? location.state.purchaseNotice : ''
   return <div className="space-y-7 [overflow-wrap:anywhere]">{back}
     <PageHeader eyebrow={`Purchase · ${customer.data.name}`} title="Purchase details" description="A permanent record of the items and prices at the time of purchase. Saved purchases cannot be edited or deleted." />
     {notice ? <p className="rounded-md border border-line bg-white px-4 py-3 text-sm text-ink" role="status">{notice}</p> : null}
@@ -43,6 +45,10 @@ export function PurchaseDetailPage() {
       {record.tax_paise ? <div className="flex justify-between gap-4"><dt className="text-muted">Recorded legacy tax</dt><dd>{purchaseMoney(record.tax_paise)}</dd></div> : null}
       <div className="flex justify-between gap-4 border-t border-line pt-4 text-base font-semibold"><dt>Grand total</dt><dd data-testid="purchase-grand-total">{purchaseMoney(record.total_paise)}</dd></div>
     </dl><p className="mt-4 text-xs leading-5 text-muted">Totals are calculated by the server and shown in INR. Discounts are fixed rupee amounts.</p></CardContent></Card>
+    <Card><CardHeader><div className="flex flex-wrap items-center justify-between gap-3"><CardTitle>Payment summary</CardTitle><PaymentStatusBadge status={record.payment_status} /></div></CardHeader><CardContent className="space-y-5"><PurchasePaymentSummary summary={record} />
+      {!customer.data.archived_at && record.outstanding_paise > 0 && !['void', 'refunded'].includes(record.status) ? <Link to={`/customers/${uuid}/purchases/${record.uuid}/payments/new`} className="inline-flex h-10 items-center justify-center rounded-md bg-ink px-4 text-sm font-medium text-white hover:bg-ink/90">Record Payment</Link> : <p className="text-sm text-muted">{record.outstanding_paise === 0 ? 'This purchase is fully paid.' : customer.data.archived_at ? 'Restore the customer before recording a payment.' : 'This historical purchase cannot receive payments.'}</p>}
+    </CardContent></Card>
+    <PaymentHistory key={`payments:${record.uuid}`} customerUuid={uuid} purchaseUuid={record.uuid} />
     <Card><CardHeader><CardTitle>Purchase notes</CardTitle></CardHeader><CardContent><p className="whitespace-pre-wrap text-sm leading-6 text-muted">{record.notes ?? 'No purchase notes recorded.'}</p></CardContent></Card>
   </div>
 }

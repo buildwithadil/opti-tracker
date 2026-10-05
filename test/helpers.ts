@@ -54,7 +54,7 @@ export function installDatabaseHooks(): void {
   })
   beforeEach(async () => {
     const { results: triggers } = await bindings.DB.prepare(`SELECT name, sql FROM sqlite_master
-      WHERE type = 'trigger' AND name IN ('audit_logs_immutable_delete', 'purchases_no_hard_delete', 'purchases_immutable_update', 'purchases_immutable_delete', 'purchase_items_immutable_update', 'purchase_items_immutable_delete', 'customers_no_hard_delete', 'prescriptions_immutable_delete')`)
+      WHERE type = 'trigger' AND name IN ('audit_logs_immutable_delete', 'purchases_no_hard_delete', 'purchases_immutable_update', 'purchases_immutable_delete', 'purchase_items_immutable_update', 'purchase_items_immutable_delete', 'payments_immutable_delete', 'payment_reversals_immutable_delete', 'customers_no_hard_delete', 'prescriptions_immutable_delete')`)
       .all<{ name: string; sql: string }>()
     for (const trigger of triggers) {
       await bindings.DB.prepare(`DROP TRIGGER "${trigger.name}"`).run()

@@ -1,6 +1,7 @@
 import { applyD1Migrations } from 'cloudflare:test'
 import { describe, expect, it } from 'vitest'
 import { bindings, count, installDatabaseHooks, seedCustomer, seedOwner, seedPurchase } from './helpers'
+import { createPayment } from '../worker/services/payments'
 
 installDatabaseHooks()
 
@@ -10,9 +11,9 @@ async function insertAudit(id = 'audit-1', actor: string | null = null): Promise
 }
 
 describe('real D1 migration and relational integrity', () => {
-  it('applies all six production migrations once, preserving their tables and triggers', async () => {
+  it('applies all seven production migrations once, preserving their tables and triggers', async () => {
     expect(bindings.TEST_MIGRATIONS.map((migration) => migration.name)).toEqual([
-      '0001_initial.sql', '0002_business_fields.sql', '0003_phase_one_integrity.sql', '0004_customer_management.sql', '0005_prescription_management.sql', '0006_purchase_management.sql',
+      '0001_initial.sql', '0002_business_fields.sql', '0003_phase_one_integrity.sql', '0004_customer_management.sql', '0005_prescription_management.sql', '0006_purchase_management.sql', '0007_payment_management.sql',
     ])
     const applied = await bindings.DB.prepare('SELECT name FROM d1_migrations ORDER BY name').all<{ name: string }>()
     expect(applied.results.map((row) => row.name)).toEqual(bindings.TEST_MIGRATIONS.map((migration) => migration.name))
@@ -28,10 +29,11 @@ describe('real D1 migration and relational integrity', () => {
       'purchases_invoice_number_immutable', 'purchases_no_hard_delete', 'purchases_immutable_update', 'purchases_immutable_delete',
       'purchase_items_immutable_update', 'purchase_items_immutable_delete', 'prescriptions_lineage_insert', 'prescriptions_immutable_update', 'prescriptions_immutable_delete',
       'payments_customer_matches_purchase_insert', 'payments_customer_matches_purchase_update',
+      'payments_creation_insert', 'payments_immutable_update', 'payments_immutable_delete', 'payments_create_audit_integrity',
     ]))
     // The installed helper must be idempotent against the persisted migration ledger.
     await applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS)
-    expect(await count('d1_migrations')).toBe(6)
+    expect(await count('d1_migrations')).toBe(7)
     expect(await bindings.DB.prepare('PRAGMA foreign_keys').first()).toEqual({ foreign_keys: 1 })
     expect((await bindings.DB.prepare('PRAGMA foreign_key_check').all()).results).toEqual([])
   })
@@ -198,21 +200,21 @@ describe('issued invoice integrity', () => {
 })
 
 describe('payment-customer consistency', () => {
-  it('requires the payment customer to match the purchase on insert and either-field update', async () => {
+  it('requires payment/customer ownership on insert and preserves immutable associations after recording', async () => {
+    const owner = await seedOwner()
     await seedCustomer()
     await seedCustomer('other-customer', '9123456780')
-    await seedPurchase()
-    await seedPurchase('other-purchase', 'other-customer', 'INV-0002')
+    await seedPurchase('purchase-1', 'customer-1', 'INV-0001', { subtotal: 1000 })
+    await seedPurchase('other-purchase', 'other-customer', 'INV-0002', { subtotal: 1000 })
     for (const customerId of [null, 'missing', 'other-customer']) {
       await expect(bindings.DB.prepare("INSERT INTO payments(id,purchase_id,customer_id,amount_paise,payment_method) VALUES ('invalid','purchase-1',?,100,'cash')").bind(customerId).run()).rejects.toThrow(/payment customer must match the purchase/iu)
     }
     await expect(bindings.DB.prepare("INSERT INTO payments(id,purchase_id,customer_id,amount_paise,payment_method) VALUES ('orphan','missing','customer-1',100,'cash')").run()).rejects.toThrow(/payment customer must match the purchase/iu)
-    await bindings.DB.prepare("INSERT INTO payments(id,purchase_id,customer_id,amount_paise,payment_method) VALUES ('payment','purchase-1','customer-1',100,'cash')").run()
-    await expect(bindings.DB.prepare("UPDATE payments SET customer_id = 'other-customer' WHERE id = 'payment'").run()).rejects.toThrow(/payment customer must match the purchase/iu)
-    await expect(bindings.DB.prepare("UPDATE payments SET purchase_id = 'other-purchase' WHERE id = 'payment'").run()).rejects.toThrow(/payment customer must match the purchase/iu)
+    await createPayment(bindings.DB, 'customer-1', 'purchase-1', { client_request_id: crypto.randomUUID(), amount: '1.00', payment_method: 'cash' }, { adminId: owner, requestId: crypto.randomUUID() })
+    await expect(bindings.DB.prepare("UPDATE payments SET customer_id = 'other-customer'").run()).rejects.toThrow(/payments are immutable/iu)
+    await expect(bindings.DB.prepare("UPDATE payments SET purchase_id = 'other-purchase'").run()).rejects.toThrow(/payments are immutable/iu)
     expect(await bindings.DB.prepare('SELECT purchase_id,customer_id FROM payments').first()).toEqual({ purchase_id: 'purchase-1', customer_id: 'customer-1' })
-    await bindings.DB.prepare("UPDATE payments SET purchase_id = 'other-purchase', customer_id = 'other-customer' WHERE id = 'payment'").run()
-    expect(await bindings.DB.prepare('SELECT purchase_id,customer_id FROM payments').first()).toEqual({ purchase_id: 'other-purchase', customer_id: 'other-customer' })
+    await expect(bindings.DB.prepare("UPDATE payments SET purchase_id = 'other-purchase', customer_id = 'other-customer'").run()).rejects.toThrow(/payments are immutable/iu)
   })
 })
 

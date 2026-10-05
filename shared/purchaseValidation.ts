@@ -10,7 +10,7 @@ const calendarDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/u, 'Use a date in YYY
 }, 'Use a real calendar date.')
 
 /** Keep money as decimal text until the worker's exact paise parser runs. */
-const rupeeAmount = z.string().trim().max(24, 'The amount is too large.')
+export const rupeeAmountSchema = z.string().trim().max(24, 'The amount is too large.')
   .regex(/^\d+(?:\.\d{1,2})?$/u, 'Use a non-negative rupee amount with at most two decimal places.')
   .refine(value => { try { parseRupeesToPaise(value); return true } catch { return false } }, 'The amount is outside the supported integer-paise range.')
 const uuid = z.string().uuid('Use a valid prescription UUID.').toLowerCase()
@@ -22,8 +22,8 @@ const itemSchema = z.object({
   description: cleanText('a description', 500),
   product_category: z.enum(purchaseCategories),
   quantity: z.number().int('Quantity must be a whole number.').min(1).max(100000),
-  unit_price: rupeeAmount,
-  discount: rupeeAmount.default('0'),
+  unit_price: rupeeAmountSchema,
+  discount: rupeeAmountSchema.default('0'),
 }).strict().superRefine((item, context) => {
   try { calculateLineTotal({ quantity: item.quantity, unitPricePaise: parseRupeesToPaise(item.unit_price), discountPaise: parseRupeesToPaise(item.discount) }) }
   catch { context.addIssue({ code: 'custom', path: ['discount'], message: 'Check the line amount and discount. Discount cannot exceed quantity × unit price, and the amount must fit the supported range.' }) }
@@ -35,7 +35,7 @@ const bodySchema = z.object({
   notes: z.string().refine(value => !controls.test(value.replaceAll('\n', '')), 'Notes may contain line breaks, but not other control characters.')
     .trim().max(2000, 'Use at most 2000 characters for purchase notes.').nullable().default(null).transform(value => value || null),
   prescription_uuid: uuid.nullable().default(null),
-  order_discount: rupeeAmount.default('0'),
+  order_discount: rupeeAmountSchema.default('0'),
   items: z.array(itemSchema).min(1, 'Add at least one purchase item.').max(100, 'A purchase may contain at most 100 items.'),
 }).strict().superRefine((values, context) => {
   try { purchaseAmounts(values) }

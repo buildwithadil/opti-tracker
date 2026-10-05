@@ -18,7 +18,7 @@ describe('append-only 0006 populated real-D1 migration', () => {
     const tables = ['admin_users', 'customers', 'prescriptions', 'purchases', 'purchase_items', 'payments', 'audit_logs']
     const baseline = await Promise.all(tables.map(rows))
     const rootPages = (await bindings.DB.prepare("SELECT name,rootpage FROM sqlite_master WHERE type='table' AND name IN ('purchases','purchase_items') ORDER BY name").all()).results
-    await applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS)
+    await applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS.slice(0, 6))
     const expected = baseline.map((records, index) => tables[index] === 'purchases' ? records.map(row => ({ ...row, client_request_id: null, creation_audit_id: null, item_count: null })) : tables[index] === 'purchase_items' ? records.map(row => ({ ...row, snapshot_position: null })) : records)
     expect(await Promise.all(tables.map(rows))).toEqual(expected)
     expect((await bindings.DB.prepare("SELECT name,rootpage FROM sqlite_master WHERE type='table' AND name IN ('purchases','purchase_items') ORDER BY name").all()).results).toEqual(rootPages)
@@ -27,7 +27,7 @@ describe('append-only 0006 populated real-D1 migration', () => {
     for (const [table, column, parent, key] of [['purchases', 'customer_id', 'customers', 'uuid'], ['purchases', 'prescription_id', 'prescriptions', 'id'], ['purchases', 'creation_audit_id', 'audit_logs', 'id'], ['purchase_items', 'purchase_id', 'purchases', 'id']]) {
       expect((await bindings.DB.prepare(`PRAGMA foreign_key_list(${table})`).all()).results).toContainEqual(expect.objectContaining({ table: parent, from: column, to: key }))
     }
-    await applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS)
+    await applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS.slice(0, 6))
     expect(await Promise.all(tables.map(rows))).toEqual(expected)
     await expect(bindings.DB.prepare("UPDATE purchases SET notes = 'changed'").run()).rejects.toThrow(/immutable/u)
     await expect(bindings.DB.prepare("DELETE FROM purchase_items").run()).rejects.toThrow(/immutable/u)

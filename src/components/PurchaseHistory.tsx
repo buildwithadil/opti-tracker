@@ -11,6 +11,7 @@ import { Button } from './ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card'
 import { Field, TextInput } from './ui/Field'
 import { ErrorState, LoadingState } from './ui/States'
+import { PaymentStatusBadge } from './PaymentSummary'
 
 export function PurchaseHistory({ customer }: { customer: Customer }) {
   const [page, setPage] = useState(1)
@@ -39,7 +40,7 @@ export function PurchaseHistory({ customer }: { customer: Customer }) {
       {filtered ? <Button variant="secondary" size="sm" onClick={() => { setDateFrom(''); setDateTo(''); setCategory(''); setPage(1) }}>Clear purchase filters</Button> : null}
       {!valid.success ? <p className="text-sm text-red-700" role="alert">{valid.error.issues[0].message}</p> : history.isPending ? <LoadingState label="Loading purchases…" /> : history.isError ? <ErrorState title="Purchase history could not be loaded" description={purchaseErrorMessage(history.error)} onRetry={() => void history.refetch()} /> : history.isSuccess ? <>
         {history.data.purchases.length ? <ul className="divide-y divide-line" aria-label="Purchase history">{history.data.purchases.map(record => <li key={record.uuid} className="flex flex-wrap items-center justify-between gap-4 py-5 first:pt-0">
-          <div className="min-w-0 space-y-2"><p className="text-sm font-semibold text-ink">Purchase date: <time dateTime={record.purchase_date}>{prescriptionDate(record.purchase_date)}</time></p><p className="text-sm text-muted">Grand total: <span className="font-medium tabular-nums text-ink">{purchaseMoney(record.total_paise)}</span></p></div>
+          <div className="min-w-0 space-y-2"><p className="text-sm font-semibold text-ink">Purchase date: <time dateTime={record.purchase_date}>{prescriptionDate(record.purchase_date)}</time></p><p className="text-sm text-muted">Grand total: <span className="font-medium tabular-nums text-ink">{purchaseMoney(record.total_paise)}</span></p><PaymentStatusBadge status={record.payment_status} /><p className="text-sm tabular-nums text-muted">Paid: {purchaseMoney(record.amount_paid_paise)} · Outstanding: {purchaseMoney(record.outstanding_paise)}</p></div>
           <Link to={`/customers/${customer.uuid}/purchases/${record.uuid}`} className="text-sm font-medium text-ink underline underline-offset-4" aria-label={`View purchase details, ${prescriptionDate(record.purchase_date)}, ${record.uuid}`}>View purchase details</Link>
         </li>)}</ul> : <div className="rounded-md border border-line bg-paper px-4 py-8 text-center"><h3 className="text-base font-semibold text-ink">{filtered ? 'No matching purchases' : 'No purchases yet'}</h3><p className="mt-2 text-sm leading-6 text-muted">{filtered ? 'Adjust the dates or category to view more history.' : customer.archived_at ? 'There are no recorded purchases for this archived customer.' : 'Add the first purchase for this customer.'}</p></div>}
         <nav className="flex flex-col gap-4 border-t border-line pt-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between" aria-label="Purchase history pagination">

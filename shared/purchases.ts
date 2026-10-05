@@ -1,5 +1,6 @@
 /** Public purchase contracts. Monetary values crossing the API are integer
  * paise; create input uses decimal rupee strings and never accepts totals. */
+import type { PaymentSummary } from './payments.js'
 export type PurchaseStatus = 'draft' | 'issued' | 'partially_paid' | 'paid' | 'void' | 'refunded'
 export type PurchaseTaxType = 'none' | 'cgst_sgst' | 'igst'
 export type PurchaseLineType = 'product' | 'service' | 'adjustment'
@@ -33,7 +34,7 @@ export interface PurchaseItemSnapshot {
   updated_at: string
 }
 
-export interface Purchase {
+export interface Purchase extends PaymentSummary {
   uuid: string
   customer_uuid: string
   prescription_uuid: string | null

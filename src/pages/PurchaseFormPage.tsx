@@ -17,6 +17,7 @@ import { PageHeader } from '../components/ui/PageHeader'
 import { ErrorState, LoadingState } from '../components/ui/States'
 import { customerErrorMessage, customerKeys, customersApi } from '../lib/customers'
 import { prescriptionDate, prescriptionErrorMessage, prescriptionKeys, prescriptionsApi } from '../lib/prescriptions'
+import { paymentKeys } from '../lib/payments'
 import { isDuplicatePurchase, purchaseErrorMessage, purchaseFieldErrors, purchaseKeys, purchaseMoney, purchasesApi } from '../lib/purchases'
 import { purchaseFormSchema, type PurchaseFormValues, type PurchaseSaveValues } from '../lib/purchaseValidation'
 
@@ -61,7 +62,7 @@ function PurchaseForm({ customer }: { customer: Customer }) {
     onSuccess: async result => {
       saved.current = true
       queryClient.setQueryData(purchaseKeys.detail(customer.uuid, result.uuid), result)
-      await queryClient.invalidateQueries({ queryKey: purchaseKeys.customer(customer.uuid) })
+      await Promise.all([queryClient.invalidateQueries({ queryKey: purchaseKeys.customer(customer.uuid) }), queryClient.invalidateQueries({ queryKey: paymentKeys.credit(customer.uuid) })])
       form.reset()
       navigate(`/customers/${customer.uuid}/purchases/${result.uuid}`, { replace: true, state: { purchaseNotice: 'Purchase saved. The original item details and prices are preserved.' } })
     },
