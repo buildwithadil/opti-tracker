@@ -2,7 +2,7 @@
 
 A single-owner optical shop application built with React/TypeScript, a Blaze REST API in Cloudflare Workers, and Cloudflare D1.
 
-**Current scope: Phases 1–7 — authentication, customers, prescriptions, immutable purchases/payments, credit, invoice printing, operational reports and CSV exports.** Invoices preserve payment position at issue; reports use live authoritative balances. Dashboard summaries show real daily activity and current credit/customer counts. Broader shop preferences and release acceptance remain separately gated. **Phase 8 has not started.**
+**Delivered scope: authentication, customers, prescriptions, immutable purchases/payments, credit, invoice printing, operational reports and CSV exports. Phase 8 local final acceptance and isolated SQL recovery have passed; remote staging and production deployment remain pending approval and prerequisites.** Invoices preserve payment position at issue; reports use live authoritative balances. Dashboard summaries show real daily activity and current credit/customer counts.
 
 See [PROJECT_STATUS.md](PROJECT_STATUS.md) for the current verification and handoff.
 
@@ -12,7 +12,7 @@ See [docs/architecture.md](docs/architecture.md) for folders, database relations
 
 ## Local development
 
-Use a supported Node.js LTS release (Node 24 recommended) and npm. Exact dependencies and the lockfile are committed-ready.
+Use a supported Node.js LTS release (Node 24 recommended) and npm. Exact dependencies and the lockfile are committed.
 
 ```bash
 npm ci
@@ -106,18 +106,20 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Invoice print assertions additionally require the free Poppler tools `pdfinfo`, `pdftotext` and `pdftoppm` on `PATH`; they inspect actual PDF page geometry/text and rasterized ink margins. These tools were already installed in the verification environment. Test credentials in `e2e/` are fixtures only, not production defaults. No tests access a remote database. Browser test state is isolated in a temporary directory; failures, PDFs and screenshots are ignored in `test-results/`.
+Invoice print assertions additionally require the free Poppler tools `pdfinfo`, `pdftotext` and `pdftoppm` on `PATH`; they inspect actual PDF page geometry/text and rasterized ink margins. These tools were already installed in the verification environment. Test credentials in `e2e/` are fixtures only, not production defaults. No tests access a remote database. Browser test state is isolated in a temporary directory; failures, SQL recovery fixtures, PDFs, CSVs and screenshots are ignored in `test-results/`.
+
+Final verification: **1,073 real workerd/D1 tests in 29 files and 42 real-backend Chromium scenarios**, with TypeScript, ESLint, build and zero-vulnerability audit passing. The final browser scenario covers all seven desktop/mobile routes, browser console/resource checks, a complete paid customer→prescription→purchase→invoice→reports/CSV workflow and full isolated SQL recovery with unique reconciled invoice numbering. Existing local SQL exports and every original row/field/physical rowid, migration and private-variable hash remain identical. See [Phase 8](docs/phase-eight.md).
 
 ## Production is not yet approved
 
 Do not run deployment or remote migrations during ordinary development. The source Wrangler D1 binding deliberately contains no production database ID. Create an explicitly named remote database only with the owner's approval, then add its ID. Do not rely on automatic provisioning for an existing shop.
 
-Before production use, complete the later phases and run the full acceptance suite. A remote Free-plan CPU check is required for the native PBKDF2 password work factor; a successful local workerd test is not proof of the 10 ms Free-plan CPU budget. This work factor must not be silently weakened. See [docs/deployment.md](docs/deployment.md).
+Before production use, approve the exact remote account/resource/binding/migration/secret/deployment actions, verify shared Free-plan quotas and actual business identity, then pass staging acceptance and the native PBKDF2 CPU benchmark. Successful local workerd tests are not proof of the **10 ms Free-plan CPU budget**, particularly for password change, which verifies and derives credentials. The 600,000-iteration work factor must not be silently weakened. No account inspection, remote migration/deployment or production smoke has been performed. See [docs/deployment.md](docs/deployment.md).
 
 ## Backup and recovery
 
-No automated external backup is currently configured. D1 Free Time Travel provides seven days of automatic point-in-time recovery but is not an independent backup. Recommended daily SQL exports, private storage, invoice-sequence reconciliation and restore verification are documented in [docs/backup-and-restore.md](docs/backup-and-restore.md). Business CSV exports contain selected report fields, not the complete schema, clinical history, audit trail or invoice ledger, and do not replace full SQL backups.
+No automated external backup is currently configured. D1 Free Time Travel provides seven days of automatic point-in-time recovery but is not an independent backup. Recommended daily SQL exports, private storage, invoice-sequence reconciliation and restore verification are documented in [docs/backup-and-restore.md](docs/backup-and-restore.md). Phase 8 actually rehearsed full SQL export/import into an empty isolated local target. The offline `maintenance/prepare-recovery.ts` tool orders trusted pinned-version exports correctly after the earlier customer-table rebuild; review the runbook before any restore. Business CSV exports do not replace full SQL backups.
 
 ## Phase reports
 
-[Phases 1–6](docs/phase-six.md) are historical checkpoints and are committed through `3e31e14`. [Phase 7](docs/phase-seven.md) records reports/exports, **1,073 passing workerd/D1 tests and 41 passing Chromium scenarios**, including all earlier regressions, volume/boundary/CSV/security checks and local preservation. Phase 7 is uncommitted; its exact staging/commit commands are documented without being executed. Phase 8 has not started.
+[Phases 1–6](docs/phase-six.md) and [Phase 7](docs/phase-seven.md) are historical checkpoints, committed through `ea6f27e`. [Phase 8](docs/phase-eight.md) records final local acceptance, concrete JSON-header/recovery fixes, **1,073 backend tests / 42 Chromium scenarios**, preservation evidence, production blockers and exact unexecuted staging/commit commands. Phase 8 changes are uncommitted; production readiness remains conditional on the remote gates.

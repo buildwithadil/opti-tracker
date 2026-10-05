@@ -2,7 +2,7 @@
 
 ## Repository assessment
 
-The requested directory was initially empty apart from harness metadata; it was not then a Git repository. Phases 1–6 are committed through `3e31e14`. Phase 7 began from a clean checkpoint and adds read-only reports/exports; its changes are uncommitted. Original local owner/customer/clinical/audit data and audited interim live purchase/payment/invoice activity are preserved, including corresponding shop identity/counter updates. There is no production database in this workspace. No remote migration, provisioning, deployment or restore has been performed.
+The requested directory was initially empty apart from harness metadata; it was not then a Git repository. Phases 1–7 are committed through `ea6f27e`. Phase 8 began from that clean checkpoint and completes local final acceptance/security/recovery review; its changes are uncommitted. Original local owner/customer/clinical/financial/invoice/audit/shop data remain identical to the Phase 8 baseline, including all retained Phase 7 live activity. Production bindings are not configured. No remote account inspection, migration, provisioning, deployment or restore has been performed.
 
 ## Deployment unit
 
@@ -30,6 +30,7 @@ migrations/             Append-only SQL migration files
 public/_headers         Security headers for assets served without the Worker
 test/                   Workerd/D1 integration and utility tests
 e2e/                    Browser tests against real local API and D1
+maintenance/            Offline trusted SQL recovery preparation; not runtime API code
 docs/                   Architecture, phase reports, deployment/recovery runbooks
 ```
 
@@ -153,14 +154,23 @@ React reports reuse the shell, locally owned UI primitives and TanStack Query; f
 5. Payments/credit only: immutable atomic audited payments, concurrent overpayment prevention, duplicate protection, derived balances/status and customer debt. Refunds/reversals and invoice corrections require separate approval.
 6. Invoice generation/printing: unique audited sequential reservations, immutable authoritative snapshots, safe retries/hierarchy and actual responsive A4/multi-page output.
 7. Reports/exports: exact SQL summaries/current credit, business-date boundaries, complete bounded pagination, authentic CSV/formula/privacy checks, operational dashboard and volume/regression/preservation checks.
-8. Settings/security/recovery: broader editable shop/invoice configuration, audited changes, backup round-trip and security review. Not started.
-9. Production: explicit approval, isolated staging account/database, remote free-tier CPU checks, migrations/backup, secret bootstrap, deployment and end-to-end acceptance.
+8. Final testing, deployment and production readiness: Phase 1–7 regression/security/asset/query review, all major desktop/mobile routes, complete real workflow, local SQL backup round-trip/session/invoice reconciliation and original-database preservation. Then separately approved Free-plan staging CPU/acceptance/recovery, production bindings/migrations/secrets/bootstrap/deployment and controlled smoke. This final phase adds no business module or broader settings/tax/numbering API.
 
-Each phase ends with a tested change report, outstanding issues and unexecuted staging/commit commands. Phase 7 is complete; stop before Phase 8. Its final checks passed **1,073 workerd/D1 tests and 41 real-backend Chromium scenarios**, including all earlier regressions, actual four-type downloads, exact date/legacy/overflow/privacy/volume checks and preserved local live activity. Later preferences/recovery/production gates require explicit approval.
+Each phase ends with a tested change report, outstanding issues and unexecuted staging/commit commands. Phase 8 local checks passed **1,073 workerd/D1 tests in 29 files and 42 real-backend Chromium scenarios**, plus typecheck/lint/build/audit and full private original-data/hash/physical-rowid preservation. Stronger console/resource and seven-route desktop/mobile checks passed in both the focused scenario and complete 42-scenario rerun. Remote staging/production gates remain pending explicit approval. See [Phase 8](phase-eight.md) and [deployment](deployment.md).
+
+### Final boundary and recovery corrections
+
+The central `sendResponse()` forwards `Content-Type` with Blaze's exact case-sensitive key. A real `SELF` regression reproduced the previous duplicate JSON/octet-stream fallback; its strengthened exact-header assertion passes in the complete backend suite. Middleware no-store/security/cookie headers remain included.
+
+The preserved 0004 customer rebuild changes physical table order. Pinned Wrangler SQL export can therefore insert prescription data before the referenced customer table exists. `maintenance/prepare-recovery.ts` uses the pinned Wrangler SQL splitter to prepare a **trusted full dump for an empty target**: all tables first, data in relationship order (including audits before financial anchors), original SQLite sequence metadata, then indexes/views/triggers. A per-statement SHA-256 multiset assertion prevents loss/addition/value rewriting. The original dump is retained; the CLI refuses overwriting its input/output. Foreign keys remain enabled. This tool never opens D1 or deploys code and is absent from browser/Worker bundles.
+
+The real browser recovery scenario exports/checksums all business schema/fields, imports into a separate empty disposable D1, compares every original business row/schema, verifies repeat migration/FKs/quick check, revokes restored sessions, rotates only the disposable pepper, authenticates with the original password, reads the unchanged invoice, reconciles a simulated printed-number gap with an audit and issues a unique later number. Its source fixtures and the user's persistent database are preserved. This proves the local round-trip, not remote Time Travel or account quotas.
 
 ## Verified platform limits and constraints
 
-At research time (October 2026): Workers Free 100,000 dynamic requests/day, 10 ms CPU/invocation, 128 MB isolate memory. Direct static assets are free/unlimited requests. D1 Free 5 million rows read/day, 100,000 rows written/day, 500 MB/database, 5 GB/account, 10 databases; seven-day Time Travel. Account quotas are shared with other applications. Re-check official limits before deployment.
+Rechecked against official documentation on **5 October 2026**: Workers Free 100,000 dynamic requests/day, 10 ms CPU/request, 128 MB isolate memory and 50 subrequests/request. Direct static assets are free/unlimited requests; 20,000 assets and 25 MiB per asset. D1 Free 5 million rows read/day, 100,000 rows written/day, 500 MB/database, 5 GB/account, 10 databases, 50 queries/Worker invocation and seven-day Time Travel. SQL is limited to 100 bound parameters, 100 KB per statement and 2 MB per row. Account quotas are shared with other applications; actual account plan/usage and deployed CPU remain unverified.
+
+Final built output: approximately 320.89 kB Worker JavaScript (73.79 kB gzip), 667.26 kB client JavaScript (195.79 kB gzip), 28.04 kB CSS (6.47 kB gzip). The existing client chunk warning is nonblocking; bundling/startup/latency still need deployed measurements. The artifact review verified referenced files, static security headers, API-first/SPA routing, only DB/ASSETS bindings, no secret vars/public source maps/private dumps, and no known private secrets/live-record identifiers/test credentials in built runtime. Vite's ignored server-only `.dev.vars` copy is outside public assets and is local configuration, not a production secret-upload file.
 
 D1 `batch()` is transactional. There is no interactive JavaScript transaction spanning independent calls. Reads before a later write do not protect against races. Query/statement bounds and payload limits must be reflected in purchase item caps and bounded exports. Customer leading-wildcard searches/counts can scan candidate rows despite bounded returned pages. SQLite query-plan and disposable 10,000-row checks do not establish deployed D1 latency/quota behavior. Name matching uses SQLite ASCII NOCASE/LIKE, not complete Unicode case folding or diacritic-insensitive search. Avoid FTS virtual tables until a verified SQL-export strategy is in place.
 

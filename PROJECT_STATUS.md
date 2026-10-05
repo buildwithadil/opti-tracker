@@ -1,12 +1,12 @@
 # OptiDesk project status
 
-Last verified: 5 October 2026. Current handoff: Phase 7.
+Last verified: 5 October 2026. Current handoff: Phase 8 local acceptance and deployment readiness.
 
 ## Current stage
 
-**Phase 7 — Reports & Exports: implemented and locally verified. Phase 8 has not started.**
+**Phase 8 — Final Testing, Deployment & Production Readiness: local acceptance complete; remote staging and production approval blocked by the prerequisites below. The application is not deployed or approved for production use.**
 
-Phases 1–6 are committed through `3e31e14 feat: implement invoice generation and printing`. Phase 7 changes are uncommitted. This is a local implementation checkpoint; production approval remains a later gate.
+Phases 1–7 are committed through `ea6f27e feat: implement reports and exports`. Phase 8 began from that clean checkpoint; its changes are uncommitted. It verifies the delivered application and recovery process without adding business modules or migrations.
 
 ## Delivered
 
@@ -25,17 +25,21 @@ Phases 1–6 are committed through `3e31e14 feat: implement invoice generation a
 | Gate | Actual result |
 |---|---|
 | TypeScript / ESLint | Passed |
-| Actual workerd/D1 tests | **1,073 passed across 29 files**, including all Phase 1–6 regressions and 42 reporting cases |
-| Real-backend Chromium | **41 passed**, including all 33 previous scenarios and 8 reporting scenarios |
+| Actual workerd/D1 tests | **1,073 passed across 29 files**, including all Phase 1–7 regressions and exact JSON Content-Type verification |
+| Real-backend Chromium | **42 passed**, including all 41 previous scenarios and the final workflow/recovery scenario |
 | Existing invoice output | A4/native-print/short/multi-page/100-item PDF regressions passed |
 | Production build | Passed |
 | Dependency audit | **0 vulnerabilities** |
 | CSV volume | Complete 5,000-row download passed; 5,001 rows safely rejected |
 | Query strategy | Three statements per ordinary report, four for payments/dashboard; real sales/date query plan uses the new range index without a temporary sort |
-| Local migration | `0009_report_indexes.sql` applied in **2 commands**; repeat found nothing pending |
+| Local migration | Fresh isolated `0001`–`0009` application passed; existing and restored database repeats found nothing pending; no Phase 8 migration |
 | Local integrity | Foreign-key check empty; `quick_check: ok`; nine migration entries |
+| SQL recovery | Full export/checksum/prepared import into empty isolated D1; schema/all original business fields, original-password login, session revocation, historical invoice and unique reconciled numbering passed |
+| Local preservation | Before/after full SQL byte-identical; original rows/fields/physical rowids/schema/migration/private-variable hashes unchanged |
+| Production artifacts | Built references/security headers/routing/bindings verified; known private secrets, live-record identifiers and test credentials absent from built runtime; private artifacts absent from seven committed histories |
+| Remote deployment / smoke | **Not performed**; approval, bindings, account quotas and deployed KDF CPU remain gates |
 
-The final backend gates ran with `npm run typecheck`, `npm run lint`, `npm test`; browser/build gates ran with `CI=true WRANGLER_SEND_METRICS=false npm run test:e2e`. `npm run check` also passed before the final query/cache refinements; the equivalent individual gates passed again after them. A local Wrangler startup timeout was resolved by a noninteractive/metrics-disabled retry. Existing Blaze sourcemap/chunk-size warnings and five intentional deferred-FK rollback diagnostics remain nonblocking; their regression assertions pass.
+`npm run check`, `CI=true WRANGLER_SEND_METRICS=false npm run test:e2e`, `npm audit` and `git diff --check` passed. After strengthening the final scenario with console/resource checks and all seven desktop/mobile routes, TypeScript/ESLint, its focused run and the complete **42-scenario browser/build suite** passed again. Existing Blaze sourcemap/chunk-size warnings and five intentional deferred-FK rollback diagnostics remain nonblocking; their regression assertions pass. See [Phase 8](docs/phase-eight.md) for actual results and fixes.
 
 ## Dates, money and current credit
 
@@ -50,11 +54,11 @@ The final backend gates ran with `npm run typecheck`, `npm run lint`, `npm test`
 
 ## Database preservation
 
-Migration 0009 adds one partial expression index only. Migrations 0001–0008 and private-variable hashes match the initial baseline; their existing migration-ledger entries are preserved. The original owner, customer, prescription and four audit records remain identical.
+Phase 8 adds no migration. Migrations 0001–0009, private variables, the complete local schema and every original table/row/field/physical rowid match its baseline. The full before/after SQL exports are byte-identical.
 
-**Interim live activity was observed and retained:** one purchase/item, one payment, one invoice/reservation and five associated Phase 4–6 audit events were added during this session. The original shop's identity fields were updated through the existing audited identity workflow, and its counter advanced by one corresponding reservation. The updated shop fields match the issued invoice snapshot; all other original shop fields remain preserved. These additions are not disposable Phase 7 fixtures and were not rolled back.
+**Historical Phase 7 live activity was retained:** one purchase/item, payment, invoice/reservation and five associated audit events, plus its audited shop identity/counter change. Those records were already present at the Phase 8 baseline and remain identical. Phase 8's complete workflow and recovery records exist only in disposable isolated databases.
 
-Actual final local counts: **one owner, one customer, one prescription, one purchase/item/payment/invoice/reservation, nine audit records and nine migrations**. The ignored private before/after exports and verification report are in `backups/phase-seven-before-20261005/` (directory 0700, files 0600). Disposable backend/browser tests independently verify that reports/exports do not change any financial, clinical, customer, invoice, settings or audit row. All Phase 7 fixtures, including the 5,001-sale dataset, remain isolated from this database.
+Actual final local counts: **one owner, customer, prescription, purchase, item, payment, invoice, reservation and shop; nine audit records and nine migrations**. Phase 8 private exports/snapshots/verification/artifact-review reports are in `backups/phase-eight-20261005/` (directory 0700, files 0600); the historical Phase 7 evidence remains in its original private directory. Foreign keys are clean and `quick_check` is `ok`.
 
 ## API and limits
 
@@ -66,12 +70,18 @@ Every endpoint requires the existing owner session. Strict query/path validation
 
 Detail pages: maximum 50 rows/page, page 10,000. CSV: maximum 5,000 rows and 5 MiB, never silently truncated; it exports the selected range independently of the displayed page. Payment daily groups: maximum 366. Current debt/customer aggregation necessarily reads retained shop records; remote D1 latency/rows-read and Free-plan CPU remain unverified. Chromium desktop/mobile layouts and actual downloads were verified and screenshots visually reviewed.
 
-## Stop condition and handoff
+## Production blockers and handoff
 
-**Stop at Phase 7. Phase 8 has not started.** Broader preferences/security/recovery acceptance remains separately gated. No remote resources/migration/deployment, new dependency, paid service, image/R2 storage, inventory workflow, financial edit/refund, private-variable change, database reset/restore or Git commit was performed for Phase 7.
+1. Explicit approval is required before Cloudflare login/account inspection, resource creation, remote migration, secret changes or deployment. No remote operation has been performed.
+2. The source D1 binding has no database ID; approved account, separate staging/production bindings/names/origins and actual shared Free-plan usage are unresolved.
+3. Native 600,000-iteration PBKDF2 setup/login/password-change CPU must pass an approved **Free-plan staging** benchmark, including repeated warm/practical cold measurements. Local tests do not prove the 10 ms CPU budget; the work factor remains unchanged.
+4. The owner must confirm actual invoice identity and tax/document requirements. Local identity fields are populated; the existing GSTIN passes the application's broad format but fails a standard GSTIN structure check. Its validity has not been certified or changed.
+5. Remote staging recovery/acceptance, production bootstrap/deployment, controlled production smoke and independent backup scheduling remain unperformed. No new infrastructure or paid service was introduced.
+
+Local readiness is complete; production release is pending these gates. Stage/commit commands are provided for review only, and no Git staging/commit was performed.
 
 - [Architecture](docs/architecture.md)
-- [Phase 7 report and exact unexecuted staging/commit commands](docs/phase-seven.md)
+- [Phase 8 final report and exact unexecuted staging/commit commands](docs/phase-eight.md)
 - [Test coverage](test/README.md)
-- Historical reports: [Phase 1](docs/phase-one.md), [Phase 2](docs/phase-two.md), [Phase 3](docs/phase-three.md), [Phase 4](docs/phase-four.md), [Phase 5](docs/phase-five.md), [Phase 6](docs/phase-six.md)
+- Historical reports: [Phase 1](docs/phase-one.md), [Phase 2](docs/phase-two.md), [Phase 3](docs/phase-three.md), [Phase 4](docs/phase-four.md), [Phase 5](docs/phase-five.md), [Phase 6](docs/phase-six.md), [Phase 7](docs/phase-seven.md)
 - [Deployment](docs/deployment.md) / [backup and recovery](docs/backup-and-restore.md)

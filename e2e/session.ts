@@ -7,19 +7,20 @@ import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 // actual disposable backend reports setupRequired, otherwise sign in normally.
 const email = 'owner@example.test'
 const password = 'Replacement test-only passphrase 2026'
+export const browserTestOwner = { email, password }
 // Reuse a genuine session in an ignored per-run mode0600 artifact, never browser
 // storage or a mocked identity. The unchanged five/email login limit stays on;
 // auth consumes three slots and this shared artifact avoids redundant logins
 // across spec files or Playwright worker restarts. outputDir is cleared per run.
 let cookies: Awaited<ReturnType<BrowserContext['cookies']>> | undefined
 
-export async function signIn(page: Page) {
+export async function signIn(page: Page, options: { fresh?: boolean } = {}) {
   const outputDirectory = test.info().project.outputDir
   const cookieArtifact = join(outputDirectory, 'customer-test-session.json')
-  if (!cookies && existsSync(cookieArtifact)) {
+  if (!options.fresh && !cookies && existsSync(cookieArtifact)) {
     cookies = JSON.parse(readFileSync(cookieArtifact, 'utf8')) as typeof cookies
   }
-  if (cookies) await page.context().addCookies(cookies)
+  if (!options.fresh && cookies) await page.context().addCookies(cookies)
   const response = await page.request.get('/api/auth/session')
   expect(response.status()).toBe(200)
   const session = await response.json() as { success: boolean; data: { authenticated: boolean; setupRequired?: boolean } }

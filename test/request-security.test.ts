@@ -159,6 +159,7 @@ describe('strict authentication schema', () => {
 describe('safe errors and response headers', () => {
   it('applies restrictive security headers to success and authentication errors', async () => {
     for (const response of [await request('/api/health'), await request('/api/auth/me')]) {
+      expect(response.headers.get('Content-Type')).toBe('application/json; charset=utf-8')
       expect.soft(response.headers.get('Cache-Control')).toBe('no-store')
       expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff')
       expect(response.headers.get('Referrer-Policy')).toBe('no-referrer')

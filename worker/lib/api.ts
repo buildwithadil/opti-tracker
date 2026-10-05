@@ -80,7 +80,9 @@ export function apiFailure(
  */
 export function sendResponse(writer: ResponseWriter, response: Response): void {
   writer.status(response.status)
-  response.headers.forEach((value, name) => writer.header(name, value))
+  // Blaze checks this exact casing before assigning a send(stream) fallback.
+  // Other header names stay lowercase to match the centralized middleware.
+  response.headers.forEach((value, name) => writer.header(name === 'content-type' ? 'Content-Type' : name, value))
   writer.send(response.body)
 }
 
