@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { purchaseCategories } from './purchases.js'
 import { asPaise, calculateLineTotal, calculateTotals, parseRupeesToPaise } from './money.js'
 const controls = /[\p{Cc}\p{Cf}\u2028\u2029]/u
-const calendarDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/u, 'Use a date in YYYY-MM-DD format.').refine((value) => {
+export const calendarDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/u, 'Use a date in YYYY-MM-DD format.').refine((value) => {
   const [year, month, day] = value.split('-').map(Number)
   if (year < 1 || month < 1 || month > 12 || day < 1) return false
   const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)

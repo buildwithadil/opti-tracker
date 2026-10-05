@@ -205,7 +205,7 @@ for (const viewport of [
     })
 
     expect(pageErrors).toEqual([])
-    expect(requests.every(path => path.startsWith('/api/customers') || ['/api/auth/session', '/api/auth/setup', '/api/auth/login', '/api/shop/identity'].includes(path))).toBe(true)
+    expect(requests.every(path => path.startsWith('/api/customers') || ['/api/auth/session', '/api/auth/setup', '/api/auth/login', '/api/shop/identity', '/api/reports/dashboard'].includes(path))).toBe(true)
     expect(mutations.filter(request => request.method === 'PATCH')).toHaveLength(2)
     expect(mutations.filter(request => request.method === 'DELETE' && request.path === `/api/customers/${uuid}`)).toHaveLength(2)
     expect(mutations.filter(request => request.path.endsWith('/restore'))).toHaveLength(3)

@@ -2,7 +2,7 @@
 
 A single-owner optical shop application built with React/TypeScript, a Blaze REST API in Cloudflare Workers, and Cloudflare D1.
 
-**Current scope: Phases 1–6, authentication, customers, prescriptions, purchases, payments, credit and invoice generation/printing.** Purchases and payments retain immutable financial history. Each purchase can generate one permanent invoice with original customer/shop/item/totals and payment position at issue, using the existing shop sequence. Desktop/mobile invoice views support A4 printing. Dashboard metrics, reports/CSV exports and broader shop preferences remain future gated work. This is not yet a complete optical shop application or a production deployment. **Phase 7 has not started.**
+**Current scope: Phases 1–7 — authentication, customers, prescriptions, immutable purchases/payments, credit, invoice printing, operational reports and CSV exports.** Invoices preserve payment position at issue; reports use live authoritative balances. Dashboard summaries show real daily activity and current credit/customer counts. Broader shop preferences and release acceptance remain separately gated. **Phase 8 has not started.**
 
 See [PROJECT_STATUS.md](PROJECT_STATUS.md) for the current verification and handoff.
 
@@ -77,6 +77,18 @@ Invoices preserve shop/customer identity, original items/discounts/totals, a min
 
 Use **Print invoice** for native A4 portrait printing with 14 mm margins, repeated table headers and no application navigation/buttons. Choose A4, default/100% scaling, and disable browser-generated headers/footers in the print dialog. Short documents and 100-item multi-page PDFs were verified in Chromium. Migration `0008_invoice_management.sql` has been applied locally with private preservation checks. See the [Phase 6 report](docs/phase-six.md) for numbering, snapshots, APIs, actual checks and limitations.
 
+## Reports and exports
+
+Open **Reports**, select Sales, Payments, Outstanding credit, Customers or Product categories, and apply a preset/custom date range for activity reports. Dates are inclusive **Asia/Kolkata (IST)** business days, at most 366 days. Sales/categories use the recorded purchase date; NULL legacy dates use the created timestamp's IST date. Payments use received time converted to a half-open UTC interval. Today/Yesterday/Last 7/Last 30/This month to date/Previous month presets are available.
+
+Sales show persisted gross/discount/tax/grand totals plus **current paid/outstanding** amounts, including later payments. Payment reports show actual effective receipts and Cash/UPI/Card/retained legacy-method totals and daily grouping; receipts can belong to older purchases. Category reports use original item snapshots and recorded line totals; purchase-level discounts are not allocated to category totals. Unknown legacy categories remain a separate group.
+
+Outstanding and customer reports describe the current all-date position. Archived debts remain visible, and fully paid/zero purchases contribute no debt. Outstanding reuses the established all-retained-purchase credit calculation, including legacy void/refunded/deleted debts; activity sales exclude those statuses and non-INR purchases. Reports do not change records or issued invoices. Dashboard cards expose today's sales/collections/purchases and current credit/customer/debtor counts, with explicit refresh controls.
+
+**Download CSV** exports the selected report/range independently of the visible page. Sales, payments, outstanding and category exports require the existing owner session and are capped at **5,000 rows / 5 MiB**, with a clear error instead of truncation. UTF-8 CSV uses exact rupee decimals, CRLF rows and escaped quotes/commas/newlines. Spreadsheet-risk text, including `+91` phones, is prefixed with an apostrophe to prevent formula execution. Clinical measurements, notes, references and authentication secrets are excluded. Downloads are generated on demand and are not kept in application/browser storage.
+
+Migration `0009_report_indexes.sql` adds only an indexed sales/category date expression and has been applied locally with integrity/preservation verification. Existing owner/customer/clinical/audit records and audited interim live purchase/payment/invoice activity were retained. See [Phase 7 report](docs/phase-seven.md) for exact date/credit/category rules, APIs, query strategy, security, verification and limits.
+
 ## Quality checks
 
 ```bash
@@ -104,8 +116,8 @@ Before production use, complete the later phases and run the full acceptance sui
 
 ## Backup and recovery
 
-No automated external backup is currently configured. D1 Free Time Travel provides seven days of automatic point-in-time recovery but is not an independent backup. Recommended daily SQL exports, private storage, invoice-sequence reconciliation and restore verification are documented in [docs/backup-and-restore.md](docs/backup-and-restore.md). Reports and CSV exports are outside the approved Phase 6 scope and remain unavailable.
+No automated external backup is currently configured. D1 Free Time Travel provides seven days of automatic point-in-time recovery but is not an independent backup. Recommended daily SQL exports, private storage, invoice-sequence reconciliation and restore verification are documented in [docs/backup-and-restore.md](docs/backup-and-restore.md). Business CSV exports contain selected report fields, not the complete schema, clinical history, audit trail or invoice ledger, and do not replace full SQL backups.
 
 ## Phase reports
 
-[Phase 1](docs/phase-one.md), [Phase 2](docs/phase-two.md), [Phase 3](docs/phase-three.md), [Phase 4](docs/phase-four.md) and [Phase 5](docs/phase-five.md) are historical checkpoints. Phases 1–5 are committed through `d474280`. [Phase 6](docs/phase-six.md) records invoice generation/printing, **1,031 passing workerd/D1 tests and 33 passing Chromium scenarios**, including all Phase 1–5 regressions, real A4/multi-page output, preservation checks and exact Git commands. Phase 6 is uncommitted; Phase 7 has not started.
+[Phases 1–6](docs/phase-six.md) are historical checkpoints and are committed through `3e31e14`. [Phase 7](docs/phase-seven.md) records reports/exports, **1,073 passing workerd/D1 tests and 41 passing Chromium scenarios**, including all earlier regressions, volume/boundary/CSV/security checks and local preservation. Phase 7 is uncommitted; its exact staging/commit commands are documented without being executed. Phase 8 has not started.

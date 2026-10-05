@@ -1,65 +1,35 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { authApi } from '../lib/api'
-import { primaryNavigation } from '../lib/navigation'
+import { Button } from '../components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { PageHeader } from '../components/ui/PageHeader'
+import { ErrorState, LoadingState } from '../components/ui/States'
+import { purchaseMoney } from '../lib/purchases'
+import { reportErrorMessage, reportsApi } from '../lib/reports'
 
 export function DashboardPage() {
-  const session = useQuery({ queryKey: ['session'], queryFn: authApi.session, retry: false })
-  const administrator = session.data?.authenticated ? session.data : undefined
-
-  return (
-    <div className="space-y-7">
-      <PageHeader eyebrow="Phase 6" title="Workspace readiness" description="Administrator access, customers, prescriptions, purchases, payments, credit and printable invoices are available. Reports remain planned for a later phase." />
-      <Card>
-        <CardHeader><CardTitle>Administrator access is ready</CardTitle></CardHeader>
-        <CardContent className="space-y-4 text-sm leading-6 text-muted">
-          <p>You are signed in{administrator ? ` as ${administrator.name}` : ''}{administrator?.shopName ? ` to ${administrator.shopName}` : ''}.</p>
-          <ul className="list-disc space-y-1 pl-5">
-            <li>One-time administrator setup and email/password sign in.</li>
-            <li>Secure sessions, sign out, and password changes.</li>
-            <li>Read-only shop and administrator identity.</li>
-          </ul>
-          <Link className="inline-flex rounded-md font-medium text-ink underline underline-offset-4 hover:no-underline" to="/settings">Open account settings</Link>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader><CardTitle>Customer management is ready</CardTitle></CardHeader>
-        <CardContent className="space-y-4 text-sm leading-6 text-muted">
-          <p>Search customer records, create profiles, update contact details, and archive or restore customers. Profiles show real contact information and dates, not sample records or financial metrics.</p>
-          <Link className="inline-flex rounded-md font-medium text-ink underline underline-offset-4 hover:no-underline" to="/customers">Open customers</Link>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader><CardTitle>Prescription management is ready</CardTitle></CardHeader>
-        <CardContent className="space-y-4 text-sm leading-6 text-muted">
-          <p>Record supplied spectacle prescriptions from customer profiles, view paginated clinical history, and create revisions without overwriting earlier values. Unknown measurements remain blank, never inferred.</p>
-          <Link className="inline-flex rounded-md font-medium text-ink underline underline-offset-4 hover:no-underline" to="/prescriptions">Open prescriptions</Link>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader><CardTitle>Purchase management is ready</CardTitle></CardHeader>
-        <CardContent className="space-y-4 text-sm leading-6 text-muted"><p>Record customer purchases with multiple items, original price snapshots, exact totals and an optional link to a prescription version. View purchase history from each customer profile.</p><Link className="inline-flex rounded-md font-medium text-ink underline underline-offset-4" to="/purchases">Open purchases</Link></CardContent>
-      </Card>
-      <Card>
-        <CardHeader><CardTitle>Payments and credit management is ready</CardTitle></CardHeader><CardContent className="space-y-4 text-sm leading-6 text-muted"><p>Record partial and full payments against purchases, view payment history, and see the amount a customer still owes. Balances are derived from persisted records and purchase totals stay unchanged.</p><Link className="inline-flex rounded-md font-medium text-ink underline underline-offset-4" to="/payments">Open payments</Link></CardContent>
-      </Card>
-      <Card>
-        <CardHeader><CardTitle>Future business modules</CardTitle></CardHeader>
-        <CardContent>
-          <p className="mb-4 text-sm leading-6 text-muted">These routes are included for navigation only. They do not request unavailable business APIs, display sample data, or offer record-editing forms.</p>
-          <ul className="divide-y divide-line">
-            {primaryNavigation.filter((item) => item.to !== '/dashboard' && item.to !== '/customers' && item.to !== '/prescriptions' && item.to !== '/purchases' && item.to !== '/payments').map((item) => (
-              <li key={item.to}>
-                <Link to={item.to} className="flex flex-wrap items-center justify-between gap-2 rounded-md px-2 py-3 text-sm font-medium text-ink hover:bg-paper">
-                  <span>{item.label}</span><span className="text-xs font-normal text-muted">Planned · not available in Phase 6</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
-    </div>
-  )
+  const dashboard = useQuery({ queryKey: ['reports', 'dashboard'], queryFn: reportsApi.dashboard, staleTime: 0, retry: false })
+  const data = dashboard.data
+  return <div className="space-y-7">
+    <PageHeader eyebrow="Shop overview" title="Dashboard" description="Today’s business activity and current customer credit, calculated from saved records." actions={<Button variant="secondary" loading={dashboard.isFetching} onClick={() => void dashboard.refetch()}>Refresh overview</Button>} />
+    {dashboard.isPending ? <LoadingState label="Loading shop overview…" /> : dashboard.isError ? <ErrorState title="Overview could not be loaded" description={reportErrorMessage(dashboard.error)} onRetry={() => void dashboard.refetch()} /> : data ? <>
+      <p className="text-sm text-muted">Business day <time>{data.businessDate}</time> · {data.timeZone} (IST). Credit and customer counts include all dates.</p>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {[
+          ['Today’s sales', purchaseMoney(data.sales.total_paise), '/reports?report=sales', 'dashboard-sales'],
+          ['Today’s collections', purchaseMoney(data.payments.total_paise), '/reports?report=payments', 'dashboard-payments'],
+          ['Today’s purchases', String(data.sales.purchase_count), '/reports?report=sales', 'dashboard-purchases'],
+          ['Current outstanding', purchaseMoney(data.outstanding.outstanding_paise), '/reports?report=outstanding', 'dashboard-outstanding'],
+          ['Customers', String(data.customers.customer_count), '/reports?report=customers', 'dashboard-customers'],
+          ['Customers with debt', String(data.outstanding.customer_count), '/reports?report=outstanding', 'dashboard-debtors'],
+        ].map(([label, value, to, id]) => <Card key={id}><CardContent><p className="text-sm text-muted">{label}</p><p className="mt-3 break-words text-2xl font-semibold tracking-tight tabular-nums" data-testid={id}>{value}</p><Link className="mt-4 inline-flex text-sm underline underline-offset-4" to={to}>View report</Link></CardContent></Card>)}
+      </div>
+      <Card><CardHeader><CardTitle>Collections and customer status</CardTitle></CardHeader><CardContent className="space-y-2 text-sm text-muted">
+        <p>Cash {purchaseMoney(data.payments.cash_paise)} · UPI {purchaseMoney(data.payments.upi_paise)} · Card {purchaseMoney(data.payments.card_paise)}</p>
+        {data.payments.legacy_other_paise > 0 ? <p>Other retained legacy methods: {purchaseMoney(data.payments.legacy_other_paise)}</p> : null}
+        <p>{data.customers.active_count} active · {data.customers.archived_count} archived customers</p>
+        <p>Sales include saved purchases even before invoice generation. Collections use payment received time; sales and collections can differ.</p>
+      </CardContent></Card>
+    </> : null}
+  </div>
 }

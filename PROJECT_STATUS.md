@@ -1,108 +1,77 @@
 # OptiDesk project status
 
-Last verified: 5 October 2026. Current handoff: Phase 6.
+Last verified: 5 October 2026. Current handoff: Phase 7.
 
 ## Current stage
 
-**Phase 6 — Invoice Generation & Printing: implemented and locally verified. Phase 7 has not started.**
+**Phase 7 — Reports & Exports: implemented and locally verified. Phase 8 has not started.**
 
-Phases 1–5 are committed through `d474280 feat: implement payments and credit management` and their regression suites pass. Phase 6 changes are uncommitted. This is not a complete optical-shop release or an approved production deployment.
+Phases 1–6 are committed through `3e31e14 feat: implement invoice generation and printing`. Phase 7 changes are uncommitted. This is a local implementation checkpoint; production approval remains a later gate.
 
 ## Delivered
 
-- Phase 1: single-owner authentication, secure sessions, exact-Origin/CSRF protection, throttling, security headers and responsive shell.
-- Phase 2: authenticated customer CRUD/search/filter/sort/pagination, canonical Indian mobile uniqueness, archive/restore and atomic audits.
-- Phase 3: dated customer-linked spectacle prescriptions, exact signed measurements, explicit unknown/null values and append-only revision history.
-- Phase 4: customer purchases with 1–100 optical line items, seven product categories, original description/category/quantity/price/discount/total snapshots, dates, notes and optional same-customer prescription links.
-- Backend-calculated integer-paise line/subtotal/discount/grand totals; live frontend preview shares the exact computation.
-- Customer-scoped history with pagination, inclusive date-range and item-category filters; immutable purchase details and readable archived-customer history.
-- Five-statement atomic D1 creation with constant query count, conditional active-customer checks, database-enforced complete item sets and creation audits.
-- Stable in-memory submission UUIDs plus database unique protection; concurrent/double/lost-response retries cannot duplicate the same submission.
-- Responsive item add/remove forms, paginated exact-version prescription choices, empty/loading/error/success states and unsaved cancel/navigation/back/reload protection.
-- Phase 5: positive Cash/UPI/Card payments against an existing purchase, partial/full settlement, chronological paginated individual payment history and optional reference/note.
-- Backend-derived paid/outstanding amounts and Unpaid/Partially paid/Paid status; customer total outstanding credit across all purchases, without changing purchase totals/items/timestamps.
-- Four-statement atomic payment/audit/response/balance D1 batch; database-level concurrent overpayment, customer/archive/date, duplicate and immutable-ledger guards.
-- Responsive payment forms with in-memory submission UUIDs, synchronous locking, dirty-form protections, retained drafts and authoritative stale-balance/duplicate refresh.
-- Phase 6: one on-demand immutable invoice per purchase, authoritative versioned customer/shop/item/financial and payment-at-issue snapshots, safe sequential numbering and permanent audited number reservations.
-- Minimal business information form reuses existing shop name/address/contact/GSTIN fields; no duplicate settings, numbering preferences or tax configuration API.
-- Dedicated desktop/mobile invoice view with native A4 print, repeated table headers, preserved rows/totals and application chrome/buttons excluded.
+- Phases 1–6: single-owner authentication/security; canonical searchable/archiveable customers; dated immutable prescription revisions; complete immutable purchase/item snapshots; Cash/UPI/Card payments and derived credit; permanent numbered invoices and A4 printing.
+- Sales reports: saved purchase count, gross subtotal, discounts, persisted tax, grand total and current paid/outstanding position for an inclusive purchase-date range.
+- Payment reports: effective collections, transaction count, Cash/UPI/Card and retained legacy-method totals, bounded receipt details and business-day grouping.
+- Outstanding reports: current positive customer debts across all purchases/dates, phones, archived status and outstanding purchase counts, highest debt first. Fully paid and zero-total purchases contribute no debt.
+- Customer reports: total/active/archived profiles, customers with purchases/debts and paginated minimal contact/current-credit details.
+- Category reports: seven established immutable category snapshots, line counts, quantity and recorded line sales; an explicit unknown-legacy bucket retains unrecognized categories. Purchase discounts are not allocated to categories.
+- Operational dashboard: today's sales/collections/purchase count, current total credit/customer/debtor counts and effective payment-method totals.
+- Responsive reports with presets/custom validation, independent full-range SQL summaries, pagination, empty/loading/error/retry states and authenticated downloads.
+- Four on-demand UTF-8 CSV exports: sales, payments, outstanding and categories, with exact rupee decimals, quote/newline escaping, formula defenses and server-enforced row/byte limits.
 
 ## Latest actual checks
 
-Implementation and regression verification ran:
-
-```bash
-npm run check
-npm run test:e2e
-```
-
 | Gate | Actual result |
 |---|---|
-| TypeScript | Passed |
-| ESLint | Passed |
-| Actual workerd/D1 tests | **1,031 passed across 26 files**, including Phase 1–5 regression suites |
-| Real-backend Chromium | **33 passed**, including 27 earlier scenarios and 6 invoice desktop/mobile scenarios |
-| Actual A4 output | Six PDFs verified; short documents one page; 100-item documents multi-page; desktop long document eight pages |
+| TypeScript / ESLint | Passed |
+| Actual workerd/D1 tests | **1,073 passed across 29 files**, including all Phase 1–6 regressions and 42 reporting cases |
+| Real-backend Chromium | **41 passed**, including all 33 previous scenarios and 8 reporting scenarios |
+| Existing invoice output | A4/native-print/short/multi-page/100-item PDF regressions passed |
 | Production build | Passed |
 | Dependency audit | **0 vulnerabilities** |
-| Diff whitespace checks | Passed for tracked changes and new files |
-| Existing local D1 migration | `0008_invoice_management.sql` applied: **16 commands**; repeat found no pending migrations |
-| Preservation verification | Every existing table row/original column preserved; earlier migrations and private variables unchanged; foreign keys clean |
-| Live local D1 integrity | Foreign-key check empty; quick check `ok`; migration ledger contains all eight files |
+| CSV volume | Complete 5,000-row download passed; 5,001 rows safely rejected |
+| Query strategy | Three statements per ordinary report, four for payments/dashboard; real sales/date query plan uses the new range index without a temporary sort |
+| Local migration | `0009_report_indexes.sql` applied in **2 commands**; repeat found nothing pending |
+| Local integrity | Foreign-key check empty; `quick_check: ok`; nine migration entries |
 
-Invoice coverage includes unpaid/partial/paid/zero-total documents, multi-item discounts and persisted tax, minimal prescription/privacy, concurrent same/different-purchase generation, sequential uniqueness, duplicate/lost-response reuse, permanent failed reservations, skipped/wrong/pre-existing audit and later-statement rollback, all-column/no-op/REPLACE guards, hierarchy/security and historical snapshot behavior independent of later financial read-model changes. Browser checks invoke native print, generate real PDFs, inspect A4 metadata/text/every page's rendered ink margins, verify all 100 lines/repeated headers/final totals and exclude navigation/buttons. Short and first/last long PDF pages plus mobile view were visually inspected. Earlier regression suites also pass.
+The final backend gates ran with `npm run typecheck`, `npm run lint`, `npm test`; browser/build gates ran with `CI=true WRANGLER_SEND_METRICS=false npm run test:e2e`. `npm run check` also passed before the final query/cache refinements; the equivalent individual gates passed again after them. A local Wrangler startup timeout was resolved by a noninteractive/metrics-disabled retry. Existing Blaze sourcemap/chunk-size warnings and five intentional deferred-FK rollback diagnostics remain nonblocking; their regression assertions pass.
 
-Nonblocking diagnostics: existing Blaze sourcemap messages and the >500 kB client chunk warning. Five intentional deferred-FK commit failures emit workerd/Miniflare rollback diagnostics; all assertions pass and verify pre-existing test records survive those failures.
+## Dates, money and current credit
 
-## Database and API
+- Reporting business timezone is centralized as **Asia/Kolkata / IST (UTC+05:30)**. No existing shop timezone preference was found; reporting does not add a second settings store.
+- Sales/categories use the saved calendar `purchase_date`; a NULL legacy date falls back to `created_at` converted to IST. Invoice issue time is not the sales date.
+- Payment dates convert inclusive IST days to a half-open canonical UTC interval: start midnight inclusive, midnight after the end date exclusive. Detail timestamps remain labelled UTC.
+- Today/Yesterday/Last 7 days/Last 30 days/This month to date/Previous month/Custom are supported. Ranges are at most 366 inclusive days.
+- Outstanding and customer reports are current all-date positions. Sales paid/outstanding figures are also current, not historical balances at the end of the selected period.
+- Live debt reuses `purchase_payment_balances`, including the established all-retained-purchase semantics. Archived or legacy void/refunded/deleted purchase debts are not silently hidden from customer credit; sales activity excludes void/refunded/deleted/non-INR purchases.
+- Effective payments are settled/nondeleted; pending/voided/refunded/deleted receipts do not count. Existing bank-transfer/other methods remain an explicit legacy collection bucket without enabling new methods.
+- SQL sums integer billion-paise/count components, with constant-size BigInt reconstruction and existing safe integer-paise validation. Unsafe aggregates return `REPORT_TOTAL_OUT_OF_RANGE`; unsupported legacy finance/date/reversal data fails closed without rewriting it.
 
-Migrations 0001–0007 and their immutable financial records remain unchanged. Migration 0008 adds strict `invoices` and `invoice_number_reservations` tables, ownership/audit FKs, uniqueness/immutability/REPLACE guards and an authoritative snapshot view. Reservation insertion advances the existing `shop_settings.next_invoice_number` inside its transaction; a later failed issue retains the committed reservation. Never-reset numbering is supported; legacy collisions and unsupported policies fail closed. No purchase/payment row or historical settings/counter is rewritten by the migration.
+## Database preservation
 
-Authenticated Blaze APIs:
-- `GET /api/customers/:customerUuid/purchases/:purchaseUuid/invoice` — existing immutable invoice, or null for an owned purchase without one.
-- `POST /api/customers/:customerUuid/purchases/:purchaseUuid/invoice` — issue once (201), otherwise reuse the existing invoice (200).
-- `GET /api/shop/invoice-identity` — existing business name/address/contact/GSTIN and concurrency timestamp.
-- `PATCH /api/shop/invoice-identity` — update those four fields with stale-write protection and atomic minimal audit.
+Migration 0009 adds one partial expression index only. Migrations 0001–0008 and private-variable hashes match the initial baseline; their existing migration-ledger entries are preserved. The original owner, customer, prescription and four audit records remain identical.
 
-Existing customer/prescription/purchase/payment APIs remain active. No destructive invoice, purchase or payment endpoint exists. Prior authentication, Origin/CSRF, strict validation, prepared SQL, response envelopes, no-store/security headers and audit conventions remain active.
+**Interim live activity was observed and retained:** one purchase/item, one payment, one invoice/reservation and five associated Phase 4–6 audit events were added during this session. The original shop's identity fields were updated through the existing audited identity workflow, and its counter advanced by one corresponding reservation. The updated shop fields match the issued invoice snapshot; all other original shop fields remain preserved. These additions are not disposable Phase 7 fixtures and were not rolled back.
 
-The actual preserved local database has **one owner, one customer, one prescription, zero purchases/items/payments and four audit records**; new invoice/reservation tables are empty. Every existing table's original rows/columns/rowids and migration 0001–0007/private-variable hashes match the pre-implementation baseline. All invoice fixture records remain in disposable databases. Ignored private before/after exports and verification reports are under `backups/phase-six-before-20261005/` (directory 0700, files 0600); no reset/restore was performed.
+Actual final local counts: **one owner, one customer, one prescription, one purchase/item/payment/invoice/reservation, nine audit records and nine migrations**. The ignored private before/after exports and verification report are in `backups/phase-seven-before-20261005/` (directory 0700, files 0600). Disposable backend/browser tests independently verify that reports/exports do not change any financial, clinical, customer, invoice, settings or audit row. All Phase 7 fixtures, including the 5,001-sale dataset, remain isolated from this database.
 
-## Monetary and historical rules
+## API and limits
 
-- API input amounts are decimal rupee strings; purchases allow zero, payments require a positive amount. Excess precision is rejected, never rounded.
-- Stored/returned amounts are integer paise; BigInt parsing/intermediates and safe-integer checks prevent floating-point currency arithmetic and overflow.
-- Subtotal is gross quantity × unit price summed across items. Whole-line discounts plus the optional purchase discount form the header discount. Grand total is subtotal − discount.
-- New purchases have no tax calculation. Invoices copy actual persisted tax/financial fields without recalculating or altering them. Separate immutable payments reduce live outstanding without changing issued invoices.
-- Paid = settled, nondeleted payment sum; outstanding = stored purchase total − paid. Zero-total purchases are paid; no balance/status is cached in a purchase row.
-- Unsupported legacy posted reversals or inconsistent money return `FINANCIAL_DATA_INVALID`, without rounding, clamping or rewriting history. Unrepresentable customer aggregates return `CREDIT_TOTAL_OUT_OF_RANGE`.
-- Cash/UPI/Card are the only new methods. Canonical UTC payment time cannot precede the purchase date's UTC midnight or be in the future.
-- A prescription is optional, must exist and belong to the same customer, and retains its selected UUID permanently, including after a newer prescription/revision.
-- Purchase-create audits include exact item snapshots and financial totals, owner/request identity, and omit notes, customer contacts and clinical measurements.
-- Payment-create audits contain UUIDs, amount, method and received/created times with owner/request identity; reference, notes, contacts and clinical values are omitted.
-- Invoice customer/shop/item/totals/payment-at-issue data is snapshotted once. Normal invoices exclude customer addresses and clinical measurements; only an optional prescription UUID is retained.
-- Invoice and number-reservation audits store owner/request, IDs, number and timestamps, without duplicating customer/shop contacts or clinical information.
+- `GET /api/reports/dashboard`
+- `GET /api/reports/{sales|payments|outstanding|customers|categories}`
+- `GET /api/reports/{sales|payments|outstanding|categories}/export.csv`
 
-## Remaining limitations
+Every endpoint requires the existing owner session. Strict query/path validation, bound SQL, safe errors, no-store/security headers and unchanged unsafe-method Origin/CSRF checks apply. Report/export reads append no audits. CSV bodies contain no clinical measurements, private notes/payment references, credentials or tokens.
 
-- Purchases and payments cannot be edited/deleted, even to correct entry errors. Refunds/reversals/corrections require a separately approved append-only design.
-- Item count 1–100, quantity 1–100,000, request size 16 KiB, monetary totals at most `Number.MAX_SAFE_INTEGER` paise, page size at most 50 and page number at most 10,000.
-- Duplicate protection is scoped to one customer/submission UUID. Independent forms/new keys are not content-deduplicated; drafts/keys do not survive a reload or discard.
-- Credit means purchase debt only, not a wallet, transferable credit or lending facility. Customer credit aggregation reads all purchases, not just a visible history page.
-- Seven free-text optical categories/products; no catalog or inventory behavior. Prescription choices include explicit earlier versions; no clinical recommendation is inferred.
-- Browser verification covers Chromium at desktop 1440×960 and mobile 390×844. Other engines/devices remain unverified.
-- Issued payment figures are historical as-of values; later receipts remain on the purchase. No invoice corrections/reissue, legacy already-numbered document import or financial-year reset is enabled.
-- Native printer/driver settings can override A4/margins/scaling; use A4 and disable browser headers/footers. Print tests require installed Poppler tools; physical printer hardware remains unverified.
-- Earlier remote Free-plan PBKDF2 CPU/backup rehearsal and finite-quota/Unicode-search limitations remain as documented in prior reports.
+Detail pages: maximum 50 rows/page, page 10,000. CSV: maximum 5,000 rows and 5 MiB, never silently truncated; it exports the selected range independently of the displayed page. Payment daily groups: maximum 366. Current debt/customer aggregation necessarily reads retained shop records; remote D1 latency/rows-read and Free-plan CPU remain unverified. Chromium desktop/mobile layouts and actual downloads were verified and screenshots visually reviewed.
 
-## Boundaries and stop condition
+## Stop condition and handoff
 
-**Stop at Phase 6. Phase 7 has not started and requires explicit approval.** No reports/CSV exports, analytics, inventory/catalog, R2/images, purchase/payment/credit editing or refunds were implemented. No new npm dependencies, remote resources/migrations/deployments, paid services, secret regeneration, `.dev.vars` edits, existing-record deletion, local database reset or Git commit occurred during Phase 6.
-
-## Documentation
+**Stop at Phase 7. Phase 8 has not started.** Broader preferences/security/recovery acceptance remains separately gated. No remote resources/migration/deployment, new dependency, paid service, image/R2 storage, inventory workflow, financial edit/refund, private-variable change, database reset/restore or Git commit was performed for Phase 7.
 
 - [Architecture](docs/architecture.md)
-- Historical reports: [Phase 1](docs/phase-one.md), [Phase 2](docs/phase-two.md), [Phase 3](docs/phase-three.md), [Phase 4](docs/phase-four.md), [Phase 5](docs/phase-five.md)
-- [Phase 6 implementation report and exact staging/commit commands](docs/phase-six.md)
-- [Deployment prerequisites](docs/deployment.md)
-- [Backup/restore runbook](docs/backup-and-restore.md)
+- [Phase 7 report and exact unexecuted staging/commit commands](docs/phase-seven.md)
+- [Test coverage](test/README.md)
+- Historical reports: [Phase 1](docs/phase-one.md), [Phase 2](docs/phase-two.md), [Phase 3](docs/phase-three.md), [Phase 4](docs/phase-four.md), [Phase 5](docs/phase-five.md), [Phase 6](docs/phase-six.md)
+- [Deployment](docs/deployment.md) / [backup and recovery](docs/backup-and-restore.md)

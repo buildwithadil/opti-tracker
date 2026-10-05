@@ -13,7 +13,7 @@ async function insertAudit(id = 'audit-1', actor: string | null = null): Promise
 describe('real D1 migration and relational integrity', () => {
   it('applies all eight production migrations once, preserving their tables and triggers', async () => {
     expect(bindings.TEST_MIGRATIONS.map((migration) => migration.name)).toEqual([
-      '0001_initial.sql', '0002_business_fields.sql', '0003_phase_one_integrity.sql', '0004_customer_management.sql', '0005_prescription_management.sql', '0006_purchase_management.sql', '0007_payment_management.sql', '0008_invoice_management.sql',
+      '0001_initial.sql', '0002_business_fields.sql', '0003_phase_one_integrity.sql', '0004_customer_management.sql', '0005_prescription_management.sql', '0006_purchase_management.sql', '0007_payment_management.sql', '0008_invoice_management.sql', '0009_report_indexes.sql',
     ])
     const applied = await bindings.DB.prepare('SELECT name FROM d1_migrations ORDER BY name').all<{ name: string }>()
     expect(applied.results.map((row) => row.name)).toEqual(bindings.TEST_MIGRATIONS.map((migration) => migration.name))
@@ -33,7 +33,7 @@ describe('real D1 migration and relational integrity', () => {
     ]))
     // The installed helper must be idempotent against the persisted migration ledger.
     await applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS)
-    expect(await count('d1_migrations')).toBe(8)
+    expect(await count('d1_migrations')).toBe(9)
     expect(await bindings.DB.prepare('PRAGMA foreign_keys').first()).toEqual({ foreign_keys: 1 })
     expect((await bindings.DB.prepare('PRAGMA foreign_key_check').all()).results).toEqual([])
   })

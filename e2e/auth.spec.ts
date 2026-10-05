@@ -40,7 +40,7 @@ test('owner setup, real sessions, navigation, password change, and mobile access
     await expect(page.getByText('Passwords must match.')).toBeVisible()
     await page.getByLabel('Confirm password', { exact: true }).fill(password)
     await page.getByRole('button', { name: 'Complete one-time setup' }).click()
-    await expect(page.getByRole('heading', { name: 'Workspace readiness' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
     const cookies = await context.cookies()
     const session = cookies.find(cookie => cookie.name === 'optidesk_session')
     expect(session?.httpOnly).toBe(true)
@@ -50,7 +50,7 @@ test('owner setup, real sessions, navigation, password change, and mobile access
 
   await test.step('all seven desktop routes work without mock stats or unavailable API calls', async () => {
     await page.reload()
-    await expect(page.getByRole('heading', { name: 'Workspace readiness' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
     const navigation = page.getByRole('navigation', { name: 'Primary navigation', exact: true })
     for (const name of ['Customers', 'Sales & Purchases', 'Prescriptions', 'Payments', 'Reports', 'Settings', 'Dashboard']) {
       await navigation.getByRole('link', { name, exact: true }).click()
@@ -73,7 +73,7 @@ test('owner setup, real sessions, navigation, password change, and mobile access
     await expect(page.getByRole('alert')).toContainText('Email or password is incorrect.')
     await page.getByLabel('Password', { exact: true }).fill(replacement)
     await page.getByRole('button', { name: 'Sign in', exact: true }).click()
-    await expect(page.getByRole('heading', { name: 'Workspace readiness' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'Sign out', exact: true }).click()
     await expect(page.getByRole('heading', { name: 'Administrator sign in' })).toBeVisible()
   })
@@ -83,7 +83,7 @@ test('owner setup, real sessions, navigation, password change, and mobile access
     await page.getByLabel('Email address').fill(email)
     await page.getByLabel('Password', { exact: true }).fill(replacement)
     await page.getByRole('button', { name: 'Sign in', exact: true }).click()
-    await expect(page.getByRole('heading', { name: 'Workspace readiness' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
     const trigger = page.getByRole('button', { name: 'Open navigation' })
     await trigger.click()
     await expect(page.getByRole('dialog')).toBeVisible()
@@ -101,5 +101,6 @@ test('owner setup, real sessions, navigation, password change, and mobile access
   expect([...apiPaths].every(path => [
     '/api/auth/session', '/api/auth/setup', '/api/auth/login',
     '/api/auth/logout', '/api/auth/change-password', '/api/shop/identity', '/api/shop/invoice-identity', '/api/customers',
+    '/api/reports/dashboard', '/api/reports/sales',
   ].includes(path))).toBe(true)
 })

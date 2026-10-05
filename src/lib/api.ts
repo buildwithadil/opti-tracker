@@ -108,6 +108,28 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   return envelope.data as T
 }
 
+/** Download only an authenticated, no-store response. The short-lived object URL
+ * is revoked; exports/tokens are never persisted in browser storage or URLs. */
+export async function downloadCsv(path: string): Promise<void> {
+  let response: Response
+  try { response = await fetch(path, { credentials: 'include', cache: 'no-store', headers: { Accept: 'text/csv' } }) }
+  catch { throw new ApiError('Unable to connect to OptiDesk.', 0) }
+  if (!response.ok) {
+    const body = await parseResponse(response)
+    throw new ApiError(responseMessage(body, response), response.status, body)
+  }
+  const filename = response.headers.get('Content-Disposition')?.match(/filename="([a-zA-Z0-9_.-]+)"/u)?.[1]
+  if (!response.headers.get('Content-Type')?.startsWith('text/csv') || !filename) throw new ApiError('The server returned an unexpected download.', response.status)
+  const url = URL.createObjectURL(await response.blob())
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  document.body.append(anchor)
+  anchor.click()
+  anchor.remove()
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
 export const authApi = {
   session: async ({ signal }: { signal?: AbortSignal } = {}) => rememberSession(await apiRequest<Session>('/api/auth/session', { signal })),
   me: async ({ signal }: { signal?: AbortSignal } = {}) => rememberSession(await apiRequest<AuthenticatedSession>('/api/auth/me', { signal })),

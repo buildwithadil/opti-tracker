@@ -2,7 +2,7 @@
 
 ## Repository assessment
 
-The requested directory was initially empty apart from harness metadata; it was not then a Git repository. Phases 1–5 are committed through `d474280`. Phase 6 began from a clean committed checkpoint and adds invoice generation/printing; its changes are uncommitted. The local D1 owner, customer and prescription records are preserved through local migrations; interim activity is not reset to an older snapshot. There is no existing production database in this workspace. No remote migration, account provisioning, production deployment, or restore has been performed.
+The requested directory was initially empty apart from harness metadata; it was not then a Git repository. Phases 1–6 are committed through `3e31e14`. Phase 7 began from a clean checkpoint and adds read-only reports/exports; its changes are uncommitted. Original local owner/customer/clinical/audit data and audited interim live purchase/payment/invoice activity are preserved, including corresponding shop identity/counter updates. There is no production database in this workspace. No remote migration, provisioning, deployment or restore has been performed.
 
 ## Deployment unit
 
@@ -21,11 +21,11 @@ src/                    React application
   lib/                  In-memory API client, formatting, navigation
 worker/
   index.ts              Central authentication/security/error boundary
-  routes/               Blaze auth, customer, prescription, purchase, payment and invoice registration
+  routes/               Blaze auth and customer/clinical/financial/invoice/report routes
   validators/           Strict backend path/query schemas
-  services/             Atomic audits, immutable business/invoice snapshots, numbering and derived credit
+  services/             Atomic audits, immutable snapshots/numbering, derived credit and SQL reports
   lib/                  Web Crypto, HTTP, D1 and money helpers
-shared/                 Contracts/validation, exact money and UTC helpers
+shared/                 Contracts/validation, exact money, UTC and IST report dates
 migrations/             Append-only SQL migration files
 public/_headers         Security headers for assets served without the Worker
 test/                   Workerd/D1 integration and utility tests
@@ -35,7 +35,7 @@ docs/                   Architecture, phase reports, deployment/recovery runbook
 
 ## Data relationships
 
-Existing 0001/0002 migrations created the business foundation; 0003 adds integrity corrections. Phase 2 appends 0004 for canonical customers, Phase 3 appends 0005 for immutable prescription lineage, Phase 4 appends 0006 for complete immutable purchase snapshots and Phase 5 appends 0007 for immutable payments/derived balances. Phase 6 appends 0008 for permanent number reservations and immutable invoice snapshots without rebuilding or rewriting any original table. Previously applied migrations remain unchanged.
+Existing 0001/0002 migrations created the business foundation; 0003 adds integrity corrections. Phase 2 appends 0004 for canonical customers, Phase 3 appends 0005 for immutable prescription lineage, Phase 4 appends 0006 for complete immutable purchase snapshots and Phase 5 appends 0007 for immutable payments/derived balances. Phase 6 appends 0008 for permanent number reservations and immutable invoices. Phase 7 appends index-only 0009 for shop-wide report date lookups. No original table is rebuilt/rewritten by 0009; previously applied migrations remain unchanged.
 
 - `admin_users` has one enforced singleton owner. The initial schema contains a legacy role column, but migrations restrict it to owner and neither UI nor API implements roles/staff.
 - Owner → many `sessions`. Only HMAC token hashes are stored. The cookie token is 256 random bits. Twelve-hour absolute expiration; logout revokes the current session, password change revokes every active session.
@@ -80,7 +80,7 @@ All prescription routes are nested under an existing customer UUID. Item/history
 
 Shared Zod validation stores optional exact decimal strings/nulls, preserving unknown versus explicit zero. Signed SPH/CYL/ADD use diopters; AXIS is optional 0–180 degrees under the established schema; supplied positive distance/near/monocular PD uses mm. Required real prescription dates and optional nonpreceding expiry/recheck dates are validated. No quarter-step rule, typical-age PD range, clinical recommendation or inferred measurement is introduced. New entries/revisions support spectacle prescriptions; legacy other types remain readable. Two fractional digits/six whole digits are an explicit technical encoding bound; higher-precision legacy text is not silently normalized.
 
-Customer profiles/details expose paginated history and immutable original/replacement links. Native dirty-form protections and in-memory query/CSRF conventions are reused; there is no browser persistence, upload or external service. `/prescriptions` guides the owner to an existing customer. Phase 6 now supplies invoices; reports remain deferred. See [Phase 3 report](phase-three.md) for clinical references, schema, endpoints, tests and limitations.
+Customer profiles/details expose paginated history and immutable original/replacement links. Native dirty-form protections and in-memory query/CSRF conventions are reused; there is no browser persistence, upload or external service. `/prescriptions` guides the owner to an existing customer. Phase 6 supplies invoices and Phase 7 supplies operational reports without clinical exports. See [Phase 3 report](phase-three.md) for clinical references, schema, endpoints, tests and limitations.
 
 ## Phase 4 purchase architecture
 
@@ -128,6 +128,22 @@ The React invoice page is nested under the existing authenticated shell and open
 
 Verification: **1,031 workerd/D1 tests across 26 files; 33 real-backend Chromium scenarios**. Six invoice cases invoke native print and produce real A4 PDFs, checking metadata/text/every page's rasterized ink bounds, all 100 items, repeated headers, final totals and excluded application chrome. Short output and first/last pages of the eight-page desktop invoice, plus mobile view, were visually inspected. Poppler tools already installed in the environment perform PDF inspection; no npm/runtime dependency was added. Local 0008 applied in 16 commands, repeat/integrity and private full-row/column/rowid/hash preservation checks passed. See [Phase 6 report](phase-six.md).
 
+## Phase 7 reporting architecture
+
+`worker/services/reports.ts` owns literal allowlisted prepared-SQL report plans. Sales/payments/categories scope persisted activity; outstanding/customer plans reuse `purchase_payment_balances` and aggregate current debt across all retained purchases. Summaries, total counts and ordered detail pages share one read-only D1 batch snapshot: three statements normally, four for payment daily groups. Dashboard uses four SQL summaries in one batch. No ledger/cache tables, financial rewrites or report/export audit writes are introduced. Invoice numbers may be joined for identification, but balances never come from immutable invoice-at-issue snapshots.
+
+`shared/reportDates.ts` centralizes **Asia/Kolkata / IST (UTC+05:30)**, inclusive real calendar dates, 366-day bounds and presets. No existing shop timezone preference was present. Sales/categories use persisted `purchase_date`; NULL legacy dates use the IST day of `created_at`. The earlier customer-history UTC-prefix fallback remains a historical API contract, so NULL legacy dates near India midnight can differ from that listing; source timestamps are not modified. Effective payment receipt timestamps are filtered by bound half-open UTC boundaries corresponding to IST midnight through midnight after the end date. Details label UTC explicitly. Outstanding/customer reports reject date filters; sales balances are current, not a historical end-date debt reconstruction.
+
+Sales include complete saved purchases even before invoice generation, excluding void/refunded/deleted/non-INR activity. Settled/nondeleted INR payments are effective collections, including receipts on older purchases; pending/voided/refunded/deleted receipts do not count. Cash/UPI/Card totals plus a separate retained-legacy-method total reconcile collections. Current credit retains the Phase 5 all-purchase contract, including archived customers and legacy void/refunded/deleted debts; fully paid/zero purchases do not appear as debts. Unsupported reversal/inconsistent financial data fails closed. Categories group original snapshots, seven known keys plus one unknown-legacy bucket; quantity/line counts and recorded line sales include line discounts/persisted tax, without allocating header discounts or inventing inventory metrics.
+
+SQL aggregates integer quotient/remainder components (base one billion), casts them to text, and reconstructs only the constant-size aggregate results with BigInt and the existing safe-integer paise contract. This avoids JavaScript database loading, floating SUM and wide monetary SUM overflow. Rows/counts are checked, and an unrepresentable aggregate returns `REPORT_TOTAL_OUT_OF_RANGE`. Supported limits bound returned data rather than hiding rows behind a truncated total.
+
+The original purchase-date index lacks the NULL IST fallback; the history expression index starts with customer, so neither covers shop-wide range/order queries. Migration 0009 adds partial `idx_purchases_report_date` on `COALESCE(purchase_date,date(created_at,'+330 minutes')) DESC,id`, with exactly the sales eligibility predicate. A separate indexed NULL lookup fails closed on unassignable legacy dates while preserving the main range search. Actual joined-query plans use `SEARCH ... idx_purchases_report_date` without temporary ordering. Existing `idx_payments_status_date`, `idx_payments_settled_purchase` and purchase-item indexes are reused. Credit/customer aggregates necessarily traverse retained shop records; local query plans/5,001-row checks do not establish remote CPU/rows-read quotas.
+
+Authenticated Blaze GET routes expose dashboard, five report types and four CSV downloads. Existing strict query decoding/schema, prepared SQL, safe errors, no-store/security headers and unsafe-request Origin/CSRF apply. Activity ranges are required; current-state ranges, unknown/duplicate parameters and export pagination are rejected. Pages cap at 50 rows/page and 10,000 pages; payment daily groups cap at 366. CSV exports cap at 5,000 rows and 5 MiB, reject oversized output and are never silently truncated. They use the foundation CSV helper extended with UTF-8 BOM/CRLF, quote/newline escaping and apostrophe formula/control defenses (including +91 phones). Filename values are fixed/validated. The route sends through Blaze's response writer using its capitalized Content-Type key to avoid a duplicate octet-stream fallback and retain middleware headers. No clinical measurements, notes/references, tokens or credentials are exported.
+
+React reports reuse the shell, locally owned UI primitives and TanStack Query; filters/page links live in URLs, records/tokens do not persist in browser storage. Reports/dashboard override the general 30-second cache to refetch on revisit and provide explicit refresh/error/retry controls. Responsive detail tables/mobile cards share authoritative summaries. Downloads use credentialed no-store fetch, validate attachment/type, create a transient object URL and revoke it. Files are generated on demand without public endpoints, service-worker storage or R2. See [Phase 7 report](phase-seven.md) for actual checks, interim live preservation, limitations and unexecuted Git commands.
+
 ## Verification and delivery gates
 
 1. Foundation/authentication/design system: typecheck, lint, real D1 migration constraints, auth/security tests, browser login/navigation, build.
@@ -135,11 +151,12 @@ Verification: **1,031 workerd/D1 tests across 26 files; 33 real-backend Chromium
 3. Prescriptions: separate OD/OS fields, parameter ranges, optional values, dated history, audit edits.
 4. Purchases only: exact multi-item totals, immutable snapshots, optional fixed prescription link, atomic audits/rollback, duplicate protection and customer history. Invoice/tax/print workflows remain separately gated.
 5. Payments/credit only: immutable atomic audited payments, concurrent overpayment prevention, duplicate protection, derived balances/status and customer debt. Refunds/reversals and invoice corrections require separate approval.
-6. Invoice generation/printing only: unique audited sequential reservations, immutable authoritative snapshots, safe retries/hierarchy and actual responsive A4/multi-page output. Reports/CSV exports/analytics are outside the approved scope.
-7. Settings/security/recovery: editable shop and invoice configuration, audited changes, backup round-trip, security review.
-8. Production: explicit approval, isolated staging account/database, remote free-tier CPU checks, migrations/backup, secret bootstrap, deployment, end-to-end acceptance.
+6. Invoice generation/printing: unique audited sequential reservations, immutable authoritative snapshots, safe retries/hierarchy and actual responsive A4/multi-page output.
+7. Reports/exports: exact SQL summaries/current credit, business-date boundaries, complete bounded pagination, authentic CSV/formula/privacy checks, operational dashboard and volume/regression/preservation checks.
+8. Settings/security/recovery: broader editable shop/invoice configuration, audited changes, backup round-trip and security review. Not started.
+9. Production: explicit approval, isolated staging account/database, remote free-tier CPU checks, migrations/backup, secret bootstrap, deployment and end-to-end acceptance.
 
-Each phase ends with a tested change report, outstanding issues, and staging/commit commands. Phase 6 is complete; stop and await explicit Phase 7 approval. Until later gates pass, future modules show honest notices and no unverified business endpoint is active. Any later reports/exports must separately verify business-date boundaries, actual collections versus sales, pagination and CSV-formula defenses.
+Each phase ends with a tested change report, outstanding issues and unexecuted staging/commit commands. Phase 7 is complete; stop before Phase 8. Its final checks passed **1,073 workerd/D1 tests and 41 real-backend Chromium scenarios**, including all earlier regressions, actual four-type downloads, exact date/legacy/overflow/privacy/volume checks and preserved local live activity. Later preferences/recovery/production gates require explicit approval.
 
 ## Verified platform limits and constraints
 

@@ -14,7 +14,8 @@ import { PurchaseCreatePage } from './pages/PurchaseFormPage'
 import { PurchaseDetailPage } from './pages/PurchaseDetailPage'
 import { PaymentCreatePage } from './pages/PaymentFormPage'
 import { InvoicePage } from './pages/InvoicePage'
-import { PaymentsPage, PrescriptionsPage, PurchasesPage, ReportsPage } from './pages/WorkspacePages'
+import { PaymentsPage, PrescriptionsPage, PurchasesPage } from './pages/WorkspacePages'
+import { ReportsPage } from './pages/ReportsPage'
 import { SettingsPage } from './pages/SettingsPage'
 
 function SessionUnavailable({ onRetry, error }: { onRetry: () => void; error: unknown }) {
