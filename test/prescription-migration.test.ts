@@ -40,7 +40,7 @@ describe('0005 migration: byte-for-byte legacy clinical/history preservation on 
     const originalTable = (await bindings.DB.prepare("SELECT sql,rootpage FROM sqlite_master WHERE type = 'table' AND name = 'prescriptions'").first<{ sql: string; rootpage: number }>())!
     const originalColumns = (await bindings.DB.prepare('PRAGMA table_info(prescriptions)').all<{ name: string; type: string; notnull: number; dflt_value: string | null; pk: number }>()).results
 
-    await applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS)
+    await applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS.slice(0, 5))
     const migrated = await rows('prescriptions')
     expect(migrated).toHaveLength(original.length)
     migrated.forEach((row, index) => {
@@ -66,7 +66,7 @@ describe('0005 migration: byte-for-byte legacy clinical/history preservation on 
       const downstream = (await bindings.DB.prepare(`PRAGMA foreign_key_list(${table})`).all<{ table: string; from: string; to: string }>()).results
       expect(downstream).toContainEqual(expect.objectContaining({ table: 'prescriptions', from: 'prescription_id', to: 'id' }))
     }
-    await applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS)
+    await applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS.slice(0, 5))
     expect(await rows('prescriptions')).toEqual(migrated)
     expect(await Promise.all(protectedTables.map(rows))).toEqual(protectedRows)
     expect(await count('d1_migrations')).toBe(5)
@@ -76,7 +76,7 @@ describe('0005 migration: byte-for-byte legacy clinical/history preservation on 
   })
 
   it('applies cleanly to an empty Phase 2 database and installs all exact original append-only guards', async () => {
-    await applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS)
+    await applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS.slice(0, 5))
     expect(await count('prescriptions')).toBe(0)
     const triggers = (await bindings.DB.prepare("SELECT name,sql FROM sqlite_master WHERE type = 'trigger' AND name LIKE 'prescriptions_%' ORDER BY name")
       .all<{ name: string; sql: string }>()).results

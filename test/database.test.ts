@@ -10,9 +10,9 @@ async function insertAudit(id = 'audit-1', actor: string | null = null): Promise
 }
 
 describe('real D1 migration and relational integrity', () => {
-  it('applies all five production migrations once, preserving their tables and triggers', async () => {
+  it('applies all six production migrations once, preserving their tables and triggers', async () => {
     expect(bindings.TEST_MIGRATIONS.map((migration) => migration.name)).toEqual([
-      '0001_initial.sql', '0002_business_fields.sql', '0003_phase_one_integrity.sql', '0004_customer_management.sql', '0005_prescription_management.sql',
+      '0001_initial.sql', '0002_business_fields.sql', '0003_phase_one_integrity.sql', '0004_customer_management.sql', '0005_prescription_management.sql', '0006_purchase_management.sql',
     ])
     const applied = await bindings.DB.prepare('SELECT name FROM d1_migrations ORDER BY name').all<{ name: string }>()
     expect(applied.results.map((row) => row.name)).toEqual(bindings.TEST_MIGRATIONS.map((migration) => migration.name))
@@ -25,13 +25,13 @@ describe('real D1 migration and relational integrity', () => {
     expect(triggers.results.map((row) => row.name)).toEqual(expect.arrayContaining([
       'admin_owner_only_insert', 'admin_owner_only_update', 'audit_logs_immutable_update',
       'audit_logs_immutable_delete', 'customers_phone_required_insert', 'customers_phone_required_update', 'customers_no_hard_delete',
-      'purchases_invoice_number_immutable', 'purchases_no_hard_delete',
-      'prescriptions_lineage_insert', 'prescriptions_immutable_update', 'prescriptions_immutable_delete',
+      'purchases_invoice_number_immutable', 'purchases_no_hard_delete', 'purchases_immutable_update', 'purchases_immutable_delete',
+      'purchase_items_immutable_update', 'purchase_items_immutable_delete', 'prescriptions_lineage_insert', 'prescriptions_immutable_update', 'prescriptions_immutable_delete',
       'payments_customer_matches_purchase_insert', 'payments_customer_matches_purchase_update',
     ]))
     // The installed helper must be idempotent against the persisted migration ledger.
     await applyD1Migrations(bindings.DB, bindings.TEST_MIGRATIONS)
-    expect(await count('d1_migrations')).toBe(5)
+    expect(await count('d1_migrations')).toBe(6)
     expect(await bindings.DB.prepare('PRAGMA foreign_keys').first()).toEqual({ foreign_keys: 1 })
     expect((await bindings.DB.prepare('PRAGMA foreign_key_check').all()).results).toEqual([])
   })
@@ -40,7 +40,7 @@ describe('real D1 migration and relational integrity', () => {
     const statements = [
       bindings.DB.prepare("INSERT INTO sessions(id,admin_user_id,token_hash,expires_at) VALUES ('orphan-session','missing','hash','2099-01-01T00:00:00.000Z')"),
       bindings.DB.prepare("INSERT INTO prescriptions(id,customer_id,root_id) VALUES ('orphan-prescription','missing','orphan-prescription')"),
-      bindings.DB.prepare("INSERT INTO purchases(id,customer_id) VALUES ('orphan-purchase','missing')"),
+      bindings.DB.prepare("INSERT INTO purchases(id,customer_id,item_count,creation_audit_id) VALUES ('orphan-purchase','missing',1,'new-audit')"),
       bindings.DB.prepare("INSERT INTO purchase_items(id,purchase_id,description,unit_price_paise,line_total_paise) VALUES ('orphan-item','missing','Frame',100,100)"),
       bindings.DB.prepare("INSERT INTO audit_logs(id,actor_admin_user_id,action,entity_type,entity_id) VALUES ('orphan-audit','missing','create','customer','missing')"),
     ]
@@ -140,47 +140,42 @@ describe('active customer phone integrity', () => {
 })
 
 describe('issued invoice integrity', () => {
-  it('makes issued invoice numbers immutable, non-null, and undeletable', async () => {
+  it('makes every purchase immutable and undeletable, including legacy invoice rows', async () => {
     await seedCustomer()
     await seedPurchase()
     for (const invoiceNumber of ['INV-9999', null]) {
-      await expect(bindings.DB.prepare("UPDATE purchases SET invoice_number = ? WHERE id = 'purchase-1'").bind(invoiceNumber).run()).rejects.toThrow(/issued invoice numbers are immutable/iu)
+      await expect(bindings.DB.prepare("UPDATE purchases SET invoice_number = ? WHERE id = 'purchase-1'").bind(invoiceNumber).run()).rejects.toThrow(/purchases are immutable|issued invoice numbers are immutable/iu)
     }
-    await expect(bindings.DB.prepare("DELETE FROM purchases WHERE id = 'purchase-1'").run()).rejects.toThrow(/issued invoices cannot be permanently deleted/iu)
-    await bindings.DB.prepare("UPDATE purchases SET invoice_number = 'INV-0001', notes = 'Allowed non-number change' WHERE id = 'purchase-1'").run()
-    expect(await bindings.DB.prepare("SELECT invoice_number,notes FROM purchases WHERE id = 'purchase-1'").first()).toEqual({ invoice_number: 'INV-0001', notes: 'Allowed non-number change' })
+    await expect(bindings.DB.prepare("DELETE FROM purchases WHERE id = 'purchase-1'").run()).rejects.toThrow(/purchases are immutable|issued invoices cannot be permanently deleted/iu)
+    expect(await bindings.DB.prepare("SELECT invoice_number,notes FROM purchases WHERE id = 'purchase-1'").first()).toEqual({ invoice_number: 'INV-0001', notes: null })
   })
 
-  it('retains invoice number uniqueness globally even after archival', async () => {
-    const owner = await seedOwner()
+  it('retains invoice number uniqueness globally and prevents hard deletion', async () => {
     await seedCustomer()
     await seedPurchase()
-    await bindings.DB.prepare("UPDATE purchases SET deleted_at = ?, deleted_by_admin_id = ? WHERE id = 'purchase-1'").bind(new Date().toISOString(), owner).run()
     await expect(seedPurchase('reuse', 'customer-1', 'INV-0001')).rejects.toThrow(/UNIQUE constraint failed: purchases.invoice_number/iu)
-    await expect(bindings.DB.prepare("DELETE FROM purchases WHERE id = 'purchase-1'").run()).rejects.toThrow(/issued invoices cannot be permanently deleted/iu)
+    await expect(bindings.DB.prepare("DELETE FROM purchases WHERE id = 'purchase-1'").run()).rejects.toThrow(/purchases are immutable|issued invoices cannot be permanently deleted/iu)
     expect(await count('purchases')).toBe(1)
   })
 
-  it('allows unnumbered drafts, then locks the number at its first assignment', async () => {
+  it('retains unnumbered drafts as immutable historical rows', async () => {
     await seedCustomer()
     await seedPurchase('draft-1', 'customer-1', null)
     await seedPurchase('draft-2', 'customer-1', null)
-    await bindings.DB.prepare("DELETE FROM purchases WHERE id = 'draft-2'").run()
-    await bindings.DB.prepare("UPDATE purchases SET invoice_number = 'INV-0042' WHERE id = 'draft-1'").run()
-    await expect(bindings.DB.prepare("UPDATE purchases SET invoice_number = 'INV-0043' WHERE id = 'draft-1'").run()).rejects.toThrow(/issued invoice numbers are immutable/iu)
-    await expect(bindings.DB.prepare("DELETE FROM purchases WHERE id = 'draft-1'").run()).rejects.toThrow(/issued invoices cannot be permanently deleted/iu)
-    expect(await count('purchases')).toBe(1)
+    await expect(bindings.DB.prepare("DELETE FROM purchases WHERE id = 'draft-2'").run()).rejects.toThrow(/purchases are immutable/iu)
+    await expect(bindings.DB.prepare("UPDATE purchases SET invoice_number = 'INV-0042' WHERE id = 'draft-1'").run()).rejects.toThrow(/purchases are immutable/iu)
+    expect(await count('purchases')).toBe(2)
   })
 
-  it('enforces the added purchase-prescription foreign key and restricts referenced prescription deletion', async () => {
+  it('enforces purchase-prescription customer ownership and restricts referenced deletion', async () => {
     await seedCustomer()
     await seedPurchase()
-    await expect(bindings.DB.prepare("UPDATE purchases SET prescription_id = 'missing'").run()).rejects.toThrow(/FOREIGN KEY constraint failed/iu)
+    await expect(seedPurchase('missing-rx', 'customer-1', null, { prescriptionId: 'missing' })).rejects.toThrow(/purchase prescription must belong|FOREIGN KEY constraint failed/iu)
     await bindings.DB.prepare("INSERT INTO prescriptions(id,customer_id,root_id) VALUES ('rx','customer-1','rx')").run()
-    await bindings.DB.prepare("UPDATE purchases SET prescription_id = 'rx'").run()
+    await seedPurchase('linked', 'customer-1', null, { prescriptionId: 'rx' })
     await expect(bindings.DB.prepare("DELETE FROM prescriptions WHERE id = 'rx'").run()).rejects.toThrow(/prescriptions are immutable/iu)
-    // The append-only guard fires first in Phase 3; retain the original, actual
-    // downstream FK assertion with that guard temporarily removed in test D1.
+    // The append-only guard fires first in Phase 3; retain the downstream FK
+    // assertion with that guard temporarily removed in isolated test D1.
     const trigger = await bindings.DB.prepare("SELECT sql FROM sqlite_master WHERE name = 'prescriptions_immutable_delete'").first<{ sql: string }>()
     await bindings.DB.prepare('DROP TRIGGER prescriptions_immutable_delete').run()
     try {
@@ -188,16 +183,17 @@ describe('issued invoice integrity', () => {
     } finally {
       await bindings.DB.prepare(trigger!.sql).run()
     }
-    expect(await bindings.DB.prepare('SELECT prescription_id FROM purchases').first()).toEqual({ prescription_id: 'rx' })
+    expect(await bindings.DB.prepare("SELECT prescription_id FROM purchases WHERE id = 'linked'").first()).toEqual({ prescription_id: 'rx' })
   })
 
-  it('rejects inconsistent financial totals and preserves a valid integer-paise purchase', async () => {
+  it('rejects inconsistent financial totals and preserves valid integer-paise purchases', async () => {
     await seedCustomer()
     await seedPurchase()
-    await expect(bindings.DB.prepare('UPDATE purchases SET subtotal_paise = 10000, discount_paise = 500, tax_paise = 450, total_paise = 9999').run()).rejects.toThrow(/CHECK constraint failed/iu)
-    await bindings.DB.prepare('UPDATE purchases SET subtotal_paise = 10000, discount_paise = 500, tax_paise = 450, total_paise = 9950, taxable_amount_paise = 9500').run()
-    await expect(bindings.DB.prepare('UPDATE purchases SET taxable_amount_paise = -1').run()).rejects.toThrow(/CHECK constraint failed/iu)
-    expect(await bindings.DB.prepare('SELECT subtotal_paise,discount_paise,tax_paise,total_paise,taxable_amount_paise FROM purchases').first()).toEqual({ subtotal_paise: 10000, discount_paise: 500, tax_paise: 450, total_paise: 9950, taxable_amount_paise: 9500 })
+    await expect(bindings.DB.prepare(`INSERT INTO purchases(id,customer_id,subtotal_paise,discount_paise,tax_paise,total_paise,item_count,creation_audit_id)
+      VALUES ('bad-total','customer-1',10000,500,450,9999,1,'bad-total-audit')`).run()).rejects.toThrow(/CHECK constraint failed/iu)
+    await seedPurchase('valid-total', 'customer-1', null, { subtotal: 10000, discount: 500, tax: 450 })
+    await expect(bindings.DB.prepare("INSERT INTO purchases(id,customer_id,taxable_amount_paise,item_count,creation_audit_id) VALUES ('bad-taxable','customer-1',-1,1,'bad-taxable-audit')").run()).rejects.toThrow(/CHECK constraint failed/iu)
+    expect(await bindings.DB.prepare("SELECT subtotal_paise,discount_paise,tax_paise,total_paise,taxable_amount_paise FROM purchases WHERE id = 'valid-total'").first()).toEqual({ subtotal_paise: 10000, discount_paise: 500, tax_paise: 450, total_paise: 9950, taxable_amount_paise: 9500 })
   })
 })
 

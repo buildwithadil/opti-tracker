@@ -54,14 +54,14 @@ export function installDatabaseHooks(): void {
   })
   beforeEach(async () => {
     const { results: triggers } = await bindings.DB.prepare(`SELECT name, sql FROM sqlite_master
-      WHERE type = 'trigger' AND name IN ('audit_logs_immutable_delete', 'purchases_no_hard_delete', 'customers_no_hard_delete', 'prescriptions_immutable_delete')`)
+      WHERE type = 'trigger' AND name IN ('audit_logs_immutable_delete', 'purchases_no_hard_delete', 'purchases_immutable_update', 'purchases_immutable_delete', 'purchase_items_immutable_update', 'purchase_items_immutable_delete', 'customers_no_hard_delete', 'prescriptions_immutable_delete')`)
       .all<{ name: string; sql: string }>()
     for (const trigger of triggers) {
       await bindings.DB.prepare(`DROP TRIGGER "${trigger.name}"`).run()
     }
     try {
       // Child-first deletion keeps foreign-key enforcement enabled throughout.
-      for (const table of ['audit_logs', 'payment_reversals', 'payments', 'purchase_items', 'purchases']) {
+      for (const table of ['payment_reversals', 'payments', 'purchase_items', 'purchases', 'audit_logs']) {
         await bindings.DB.prepare(`DELETE FROM ${table}`).run()
       }
       // Only this isolated test binding is cleaned. Remove descendants before
@@ -162,8 +162,20 @@ export async function seedCustomer(id = 'customer-1', phone = '9876543210'): Pro
   return id
 }
 
-export async function seedPurchase(id = 'purchase-1', customerId = 'customer-1', invoiceNumber: string | null = 'INV-0001'): Promise<string> {
-  await bindings.DB.prepare(`INSERT INTO purchases(id,customer_id,invoice_number,status,issued_at)
-    VALUES (?,?,?,?,?)`).bind(id, customerId, invoiceNumber, invoiceNumber ? 'issued' : 'draft', invoiceNumber ? new Date().toISOString() : null).run()
+export async function seedPurchase(id = 'purchase-1', customerId = 'customer-1', invoiceNumber: string | null = 'INV-0001', options: { prescriptionId?: string; subtotal?: number; discount?: number; tax?: number } = {}): Promise<string> {
+  const migrated = await bindings.DB.prepare("SELECT name FROM d1_migrations WHERE name = '0006_purchase_management.sql'").first()
+  if (!migrated) {
+    await bindings.DB.prepare(`INSERT INTO purchases(id,customer_id,invoice_number,status,issued_at)
+      VALUES (?,?,?,?,?)`).bind(id, customerId, invoiceNumber, invoiceNumber ? 'issued' : 'draft', invoiceNumber ? new Date().toISOString() : null).run()
+    return id
+  }
+  const { subtotal = 0, discount = 0, tax = 0 } = options
+  await bindings.DB.batch([
+    bindings.DB.prepare(`INSERT INTO purchases(id,customer_id,invoice_number,status,issued_at,prescription_id,subtotal_paise,discount_paise,tax_paise,total_paise,taxable_amount_paise,item_count,creation_audit_id)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,1,?)`).bind(id, customerId, invoiceNumber, invoiceNumber ? 'issued' : 'draft', invoiceNumber ? new Date().toISOString() : null, options.prescriptionId ?? null, subtotal, discount, tax, subtotal - discount + tax, subtotal - discount, `${id}-audit`),
+    bindings.DB.prepare(`INSERT INTO purchase_items(id,purchase_id,description,quantity,unit_price_paise,discount_paise,tax_paise,line_total_paise,taxable_paise,snapshot_position)
+      VALUES (?,?,'Database fixture',1,?,?,?,?,?,0)`).bind(`${id}-item`, id, subtotal, discount, tax, subtotal - discount + tax, subtotal - discount),
+    bindings.DB.prepare("INSERT INTO audit_logs(id,action,entity_type,entity_id) VALUES (?,'create','purchase',?)").bind(`${id}-audit`, id),
+  ])
   return id
 }

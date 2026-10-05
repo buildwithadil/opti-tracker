@@ -2,7 +2,7 @@
 
 A single-owner optical shop application built with React/TypeScript, a Blaze REST API in Cloudflare Workers, and Cloudflare D1.
 
-**Current scope: Phases 1–3, authentication, customers and prescriptions.** Customers can be created, searched, edited, archived and restored. Customer-linked spectacle prescriptions can be recorded, viewed and revised with immutable history. Purchases, payments, invoices, dashboard metrics, reports, exports and editable shop configuration remain future gated phases. They show honest phase notices, not sample records or fake totals. This is not yet a complete optical shop application or a production deployment.
+**Current scope: Phases 1–4, authentication, customers, prescriptions and purchases.** Customers can be created, searched, edited, archived and restored. Customer-linked spectacle prescriptions can be recorded, viewed and revised with immutable history. Purchases record multiple optical items, original price snapshots, exact totals and an optional prescription version. Payments, invoices, dashboard metrics, reports, exports and editable shop configuration remain future gated phases. This is not yet a complete optical shop application or a production deployment. **Phase 5 has not started.**
 
 See [PROJECT_STATUS.md](PROJECT_STATUS.md) for the current verification and handoff.
 
@@ -37,7 +37,7 @@ The daily scheduled task removes only expired session/throttle/security-attempt 
 
 Open Customers to add profiles, search by literal name or mobile number, choose Active/Archived/All, sort and paginate. Indian mobile inputs such as `9876543210`, `+91 98765 43210` and `09876543210` share the canonical `+919876543210`. Arbitrary punctuation, foreign/invalid mobile structures and active duplicates are rejected.
 
-Customer profiles show contact details, registration/update dates and real prescription history. Archive actions preserve the record; restoration conflicts can be resolved by editing the archived phone first. Purchase history remains explicitly unavailable. See [Phase 2 report](docs/phase-two.md) for API/schema and format details.
+Customer profiles show contact details, registration/update dates and real prescription and purchase history. Archive actions preserve the record; restoration conflicts can be resolved by editing the archived phone first. See [Phase 2 report](docs/phase-two.md) for API/schema and format details.
 
 Migration `0004_customer_management.sql` is append-only and already applied to this workspace's local database. For a different populated database, take a private backup and review legacy phones first: unsupported inputs/canonical active collisions deliberately abort migration rather than merge or discard records.
 
@@ -48,6 +48,14 @@ Open a customer's profile and choose **Add prescription**. OD/right and OS/left 
 **Revise prescription** creates a new UUID linked to the previous version and requires a reason. Old rows cannot be overwritten or permanently deleted; version links and paginated history recover every original value. Archived customers retain read-only history until restored. New/revised records support spectacle prescriptions; legacy other types remain readable.
 
 Migration `0005_prescription_management.sql` adds lineage and near PD to the existing table without rebuilding it or changing downstream UUID references. All operations require the existing authenticated API and unsafe-request Origin/CSRF checks. See [Phase 3 report](docs/phase-three.md) for exact rules, precision/type limitations, endpoints and verified results.
+
+## Purchase management
+
+Open a customer profile and choose **Add purchase**. Record the purchase date and one or more items with a product description, optical category, whole-number quantity, unit price and optional fixed line discount. An optional purchase discount applies after line discounts. The live preview uses the same exact integer-paise calculations as the backend; saved details show backend-calculated totals.
+
+A purchase may link any specific prescription version belonging to the same customer, or no prescription. Choices are paginated; selecting an older version remains explicit and a later prescription never changes the link. Purchase history supports pagination, inclusive purchase-date filters and item-category filtering. Archived customers retain readable history but must be restored before creating a purchase.
+
+Saved purchases and their item snapshots cannot be edited, replaced or permanently deleted. Duplicate submissions with the same customer/submission UUID are rejected, including concurrent requests and retries after a lost response. Drafts and submission keys live only in memory, so a reload/discard loses the unsaved draft. Migration `0006_purchase_management.sql` extends the existing tables, preserving legacy rows and earlier migrations. It has been applied to this workspace's existing local database after a private export and record-preservation verification. See [Phase 4 report](docs/phase-four.md) for schema, endpoints, money rules, audit strategy, limits and actual checks.
 
 ## Quality checks
 
@@ -80,4 +88,4 @@ No automated external backup is currently configured. D1 Free Time Travel provid
 
 ## Phase reports
 
-[Phase 1](docs/phase-one.md) and [Phase 2](docs/phase-two.md) are historical checkpoints. [Phase 3](docs/phase-three.md) records prescription management, **797 passing workerd/D1 tests and 11 passing Chromium scenarios**, limitations and exact Git staging/commit commands. No remote production data has been modified, and Phase 4 has not started.
+[Phase 1](docs/phase-one.md), [Phase 2](docs/phase-two.md) and [Phase 3](docs/phase-three.md) are historical checkpoints. [Phase 4](docs/phase-four.md) records purchase management, **901 passing workerd/D1 tests and 19 passing Chromium scenarios**, limitations and exact Git staging/commit commands. All Phase 1–3 regression suites passed. No remote production data has been modified, and Phase 5 has not started.

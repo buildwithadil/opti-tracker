@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import type { Customer, CustomerList } from '../shared/customers'
 import {
   authenticatedHeaders, bindings, failure, installDatabaseHooks, jsonRequest,
-  login, ORIGIN, request, setup, success, type AuthSession,
+  login, ORIGIN, request, seedPurchase, setup, success, type AuthSession,
 } from './helpers'
 import { acceptedMobileForms, invalidMobileInputs, PUBLIC_CUSTOMER_KEYS } from './customer-fixtures'
 
@@ -109,7 +109,7 @@ describe('authenticated customer REST lifecycle and append-only snapshot audits'
   it('preserves archived records and history during phone reuse; restore conflict is atomic and can be resolved by editing the archived number', async () => {
     const original = await assertCustomer(await create('Original'), 201)
     await bindings.DB.prepare("INSERT INTO prescriptions(id,customer_id,root_id) VALUES ('rx',?,'rx')").bind(original.uuid).run()
-    await bindings.DB.prepare("INSERT INTO purchases(id,customer_id) VALUES ('sale',?)").bind(original.uuid).run()
+    await seedPurchase('sale', original.uuid, null)
     const archived = await assertCustomer(await status(original.uuid, 'archive'))
     const replacement = await assertCustomer(await create('Replacement', '91 98765-43210'), 201)
     const conflict = await failure(await status(original.uuid, 'restore'), 409, 'CUSTOMER_PHONE_CONFLICT')

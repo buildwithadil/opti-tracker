@@ -1,95 +1,89 @@
 # OptiDesk project status
 
-Last verified: 4 October 2026. Current handoff: Phase 3.
+Last verified: 5 October 2026. Current handoff: Phase 4.
 
 ## Current stage
 
-**Phase 3 — Prescription Management: implemented and locally verified.**
+**Phase 4 — Purchase Management: implemented and locally verified. Phase 5 has not started.**
 
-Committed Phases 1–2 remain functional. Phase 4 has not started. This is not a complete optical-shop business release or an approved production deployment.
+Phases 1–3 are committed through `e74aa4f` and their regression suites pass. Phase 4 changes are uncommitted. This is not a complete optical-shop release or an approved production deployment.
 
 ## Delivered
 
-- Phase 1: single-owner setup/login/session/logout/password changes, exact-Origin/CSRF protections, throttling, security headers and responsive neutral shell.
-- Phase 2: authenticated customer CRUD/search/pagination/sorting, canonical Indian mobile uniqueness, archive/restore, atomic administrator audits and responsive profiles/forms.
-- Phase 3: customer-linked spectacle prescription creation/details/history; separate OD/OS SPH/CYL/AXIS/ADD; prescription date, optional expiry/recheck, prescriber/notes, distance/near/monocular PD; exact signed decimals and explicit unknown/null values.
-- Append-only prescription revisions with root/parent/version/reason, database lineage/immutability guards, derived current/superseded status and complete paginated revision history.
-- Atomic creation/supersede/revise audits with minimal metadata, preserved original clinical values, stale-race protection and customer-context isolation.
-- Desktop/mobile create/detail/revision/history, double-submit protection and unsaved cancel/navigation/back/reload warnings.
-- Archived customers retain read-only prescriptions until restored. Purchase history and future financial/reporting modules remain explicitly unavailable.
+- Phase 1: single-owner authentication, secure sessions, exact-Origin/CSRF protection, throttling, security headers and responsive shell.
+- Phase 2: authenticated customer CRUD/search/filter/sort/pagination, canonical Indian mobile uniqueness, archive/restore and atomic audits.
+- Phase 3: dated customer-linked spectacle prescriptions, exact signed measurements, explicit unknown/null values and append-only revision history.
+- Phase 4: customer purchases with 1–100 optical line items, seven product categories, original description/category/quantity/price/discount/total snapshots, dates, notes and optional same-customer prescription links.
+- Backend-calculated integer-paise line/subtotal/discount/grand totals; live frontend preview shares the exact computation.
+- Customer-scoped history with pagination, inclusive date-range and item-category filters; immutable purchase details and readable archived-customer history.
+- Five-statement atomic D1 creation with constant query count, conditional active-customer checks, database-enforced complete item sets and creation audits.
+- Stable in-memory submission UUIDs plus database unique protection; concurrent/double/lost-response retries cannot duplicate the same submission.
+- Responsive item add/remove forms, paginated exact-version prescription choices, empty/loading/error/success states and unsaved cancel/navigation/back/reload protection.
 
 ## Latest actual checks
 
-The complete parent-run command succeeded:
+The final implementation run succeeded:
 
 ```bash
-npm run check && npm run test:e2e && git diff --check && npm audit
+npm run check && npm run test:e2e
 ```
 
-| Gate | Result |
+| Gate | Actual result |
 |---|---|
 | TypeScript | Passed |
 | ESLint | Passed |
-| Actual workerd/D1 tests | **797 passed across 15 files**, including all original 536 tests |
-| Full real-backend Chromium suite | **11 passed**, including Phase 1/2 regressions and six desktop/mobile prescription cases |
+| Actual workerd/D1 tests | **901 passed across 19 files**, including Phase 1–3 regression suites |
+| Real-backend Chromium | **19 passed**, including 11 earlier scenarios and 8 purchase desktop/mobile scenarios |
 | Production build | Passed |
-| Dependency audit | **0 vulnerabilities reported** |
+| Dependency audit | **0 vulnerabilities** |
 | `git diff --check` | Passed |
-| Existing local D1 migration | `0005_prescription_management.sql` applied (14 commands); repeat had no pending migrations |
-| Preservation verification | Baseline rows/owner/secrets/0001–0004 intact; foreign keys clean; interim customer addition retained |
+| Existing local D1 migration | `0006_purchase_management.sql` applied: **23 commands**; repeat found no pending migrations |
+| Preservation verification | Every existing table row/original column preserved; earlier migrations and private variables unchanged; foreign keys clean |
+| Live local D1 integrity | Foreign-key check empty; quick check `ok`; migration ledger contains all six files |
 
-Populated migration, independent FK/index/lineage checks, all-column/no-op immutability, audit-failure rollback, concurrent same-parent revisions, archived-customer races, list/history snapshots, optional/null/zero/signed values, date/axis validation, and mismatched customer context passed. Browser checks cover full lifecycle, original-value recovery, dirty forms and >20-version pagination at page sizes 10/20/50.
+Coverage includes strict monetary precision and overflow, multiple/max-100 items with five batch statements, empty/partial/unaudited SQL rejection, customer/Rx isolation, all-column/no-op immutable guards, SQL replacement/append protection, audit and later-item rollback, archive races, consistent paginated snapshots and minimal sensitive audit data. Browser coverage includes exact totals after reload, older Rx selection across pages, multiple/remove/empty items, server errors retaining input, double submit, genuine lost-response duplicate rejection, date/category filtering and desktop/mobile overflow/storage checks.
 
-At preservation-check time, the existing local database had one owner, one customer and zero prescriptions/purchases/payments. The customer was added during development before the migration and was **not reset to the initial empty snapshot**. Test clinical records remain confined to disposable databases. An ignored private SQLite backup/verification record exists under `backups/phase-three-before-20261004T095532Z/`.
+Nonblocking diagnostics: existing Blaze sourcemap messages and the >500 kB client chunk warning. Two intentional deferred-FK commit-failure tests emit workerd/Miniflare rollback diagnostics; all assertions pass and verify pre-existing test owner/customer/audits survive those failures.
 
 ## Database and API
 
-Phase 3 appends ALTER statements to the existing prescription table; it does not rebuild it or change prior migrations. Stable `prescriptions(id)` values continue to be referenced by future purchase/item foreign keys; `customer_id` references the existing `customers(uuid)`.
+Migration 0006 extends the existing purchase and item tables without rebuilding them. New fields: header `client_request_id`, `creation_audit_id`, `item_count`; item `snapshot_position`. Unique submission/audit/position indexes and customer/date history index are added. A deferred restrictive audit FK plus insert guards make empty/partial purchases unable to commit. All purchase/item rows reject update/delete; replacement and post-creation item append paths are guarded. Legacy rows remain unchanged and become read-only.
 
-New fields: `root_id`, `supersedes_id`, `revision_number`, `revision_reason`, `near_pd`. A root owns its UUID, and each successor follows its same-customer parent by one version. Unique successor/root-version slots and insert guards prevent branches/cycles/reassignment; all prescription rows reject UPDATE/DELETE. Legacy payloads and timestamps are preserved verbatim.
+Authenticated Blaze APIs:
+- `GET /api/customers/:customerUuid/purchases` — customer purchase history; `page`, `pageSize`, `dateFrom`, `dateTo`, `category`.
+- `POST /api/customers/:customerUuid/purchases` — atomic purchase plus items and audit; HTTP 201.
+- `GET /api/customers/:customerUuid/purchases/:purchaseUuid` — immutable details.
 
-Authenticated APIs:
-- `GET /api/customers/:customerUuid/prescriptions`
-- `POST /api/customers/:customerUuid/prescriptions`
-- `GET /api/customers/:customerUuid/prescriptions/:prescriptionUuid`
-- `PATCH /api/customers/:customerUuid/prescriptions/:prescriptionUuid` — inserts a replacement, HTTP 201
-- `GET /api/customers/:customerUuid/prescriptions/:prescriptionUuid/history`
+No edit/delete purchase endpoint exists. JSON aliases established `id`/`customer_id`/`prescription_id` columns as UUID fields. The earlier auth/customer/prescription conventions are retained.
 
-Each item/history/revision query binds both UUIDs. API JSON aliases the established DB `id`/`customer_id` fields as `uuid`/`customer_uuid`. Existing customer/auth endpoints remain unchanged.
+The actual preserved local database has **one owner, one customer, one prescription, zero purchases/items/payments**. The prescription created since the Phase 3 snapshot was retained. All purchase test records are in disposable databases. An ignored private SQL export, hashes and verification report are under `backups/phase-four-before-20261005T110000Z/`; no reset/restore was performed.
 
-## Validation and clinical scope
+## Monetary and historical rules
 
-- New prescription date required; optional expiry cannot precede it.
-- Blank/omitted/null measurements remain unknown; explicit zero is retained.
-- SPH/CYL/ADD accept signed exact decimal input, up to two fractional digits and six whole digits as a technical encoding bound—not a clinical normal range. Excess precision is rejected, not rounded.
-- Optional AXIS is an integer 0–180, matching the existing schema. CYL/AXIS pairing is not forced.
-- PD is an optional positive decimal in mm. Typical adult/child ranges, near subtraction and monocular sums are not inferred/enforced.
-- Revisions require a reason and preserve earlier immutable rows.
-- New structured entries/revisions support spectacle prescriptions. Legacy contact-lens/other records remain readable; specialized fitting/structured prism fields are outside scope.
-- “Current” means latest within a chain, not a clinical recommendation or expiry approval. Owner/optometrist review is needed before real clinical use and before broadening supported precision/types.
+- API input amounts are nonnegative decimal rupee strings; excess precision is rejected, never rounded.
+- Stored/returned amounts are integer paise; BigInt parsing/intermediates and safe-integer checks prevent floating-point currency arithmetic and overflow.
+- Subtotal is gross quantity × unit price summed across items. Whole-line discounts plus the optional purchase discount form the header discount. Grand total is subtotal − discount.
+- New purchases have no tax/invoice/payment operation. Existing legacy financial fields remain preserved and readable.
+- A prescription is optional, must exist and belong to the same customer, and retains its selected UUID permanently, including after a newer prescription/revision.
+- Purchase-create audits include exact item snapshots and financial totals, owner/request identity, and omit notes, customer contacts and clinical measurements.
 
-## Remaining risks
+## Remaining limitations
 
-- Existing Cloudflare Free-plan deployed PBKDF2 CPU compliance and remote backup/restore rehearsal remain unverified; no work factor was lowered.
-- Existing name-search Unicode/candidate-scan and finite shared quota limitations remain.
-- Nonblocking Blaze sourcemap and >500 kB client-chunk build warnings remain documented.
-- Only Chromium at desktop/mobile viewports was run; broader browsers/devices are not certified.
-- Original erroneous clinical values cannot be erased through normal module operations. Broader precision, retention/correction policy and specialized optical fields need explicit review.
-- No API idempotency keys/automatic independent-root deduplication are added; real UI submission locks are implemented.
+- Purchases cannot be edited or deleted, even to correct entry errors. A separately approved append-only correction strategy is needed.
+- Item count 1–100, quantity 1–100,000, request size 16 KiB, monetary totals at most `Number.MAX_SAFE_INTEGER` paise, page size at most 50 and page number at most 10,000.
+- Duplicate protection is scoped to one customer/submission UUID. Independent forms/new keys are not content-deduplicated; drafts/keys do not survive a reload or discard.
+- Seven free-text optical categories/products; no catalog or inventory behavior. Prescription choices include explicit earlier versions; no clinical recommendation is inferred.
+- Browser verification covers Chromium at desktop 1440×960 and mobile 390×844. Other engines/devices remain unverified.
+- Earlier remote Free-plan PBKDF2 CPU/backup rehearsal and finite-quota/Unicode-search limitations remain as documented in prior reports.
 
-## Not performed
+## Boundaries and stop condition
 
-No remote provisioning/migration/export/restore/deployment, paid-service activation, dependency addition, image upload, R2/external storage, secret regeneration, local DB reset or Git commit occurred. Authentication code and `.dev.vars` files are unchanged. The pre-existing user dev server was left running; test servers stopped.
-
-## Stop condition
-
-**Phase 3 only. Phase 4 has not started and requires explicit approval.** Purchases, payments, invoices, taxes, financial metrics, reports, exports and editable shop settings remain future phases.
+**Phase 4 only. Phase 5 has not started and requires explicit approval.** No payment recording, outstanding balances, credit allocation, invoice generation, inventory, R2/images, reports or financial dashboard metrics were implemented. No new dependencies, remote resources/migrations/deployments, paid services, secret regeneration, `.dev.vars` edits, existing-record deletion, local database reset or Git commit occurred.
 
 ## Documentation
 
 - [Architecture](docs/architecture.md)
-- [Phase 1 — historical](docs/phase-one.md)
-- [Phase 2 — historical](docs/phase-two.md)
-- [Phase 3 implementation report](docs/phase-three.md)
+- Historical reports: [Phase 1](docs/phase-one.md), [Phase 2](docs/phase-two.md), [Phase 3](docs/phase-three.md)
+- [Phase 4 implementation report and exact staging/commit commands](docs/phase-four.md)
 - [Deployment prerequisites](docs/deployment.md)
 - [Backup/restore runbook](docs/backup-and-restore.md)

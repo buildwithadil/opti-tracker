@@ -4,6 +4,7 @@ import { Link, useLocation, useParams } from 'react-router-dom'
 import { Archive, ArrowLeft, Pencil, RotateCcw } from 'lucide-react'
 import { formatIndianMobile } from '../../shared/phone'
 import { PrescriptionHistory } from '../components/PrescriptionHistory'
+import { PurchaseHistory } from '../components/PurchaseHistory'
 import { Button } from '../components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { ConfirmationDialog } from '../components/ui/ConfirmationDialog'
@@ -52,7 +53,7 @@ export function CustomerProfilePage() {
       <PageHeader
         eyebrow="Customer profile"
         title={record.name}
-        description="Contact details, profile status and recorded prescription history. Purchase management is not available yet."
+        description="Contact details, profile status, prescriptions and recorded purchase history."
         actions={
           <>
             <Link to={`/customers/${record.uuid}/edit`} className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-white px-4 text-sm font-medium text-ink hover:bg-paper"><Pencil className="size-4" aria-hidden="true" />Edit customer</Link>
@@ -76,10 +77,7 @@ export function CustomerProfilePage() {
         </CardContent>
       </Card>
       <PrescriptionHistory key={record.uuid} customer={record} />
-      <Card>
-        <CardHeader><CardTitle>Purchase history</CardTitle></CardHeader>
-        <CardContent><p className="text-sm leading-6 text-muted">Not available in Phase 3. Purchase records will appear here when the purchase module is implemented. No purchase history or totals are loaded.</p></CardContent>
-      </Card>
+      <PurchaseHistory key={`purchases:${record.uuid}`} customer={record} />
       <ConfirmationDialog
         open={confirmation !== null}
         title={confirmation === 'restore' ? 'Restore customer?' : 'Archive customer?'}
