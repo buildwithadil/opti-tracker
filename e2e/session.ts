@@ -34,13 +34,13 @@ export async function signIn(page: Page, options: { fresh?: boolean } = {}) {
     await page.getByLabel('Confirm password', { exact: true }).fill(password)
     await page.getByLabel('Setup secret', { exact: true }).fill('test-setup-token-for-optidesk')
     await page.getByRole('button', { name: 'Complete one-time setup' }).click()
-    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible()
   } else if (!session.data.authenticated) {
     await expect(page.getByRole('heading', { name: 'Administrator sign in' })).toBeVisible()
     await page.getByLabel('Email address', { exact: true }).fill(email)
     await page.getByLabel('Password', { exact: true }).fill(password)
     await page.getByRole('button', { name: 'Sign in', exact: true }).click()
-    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible()
   }
   cookies = await page.context().cookies()
   mkdirSync(outputDirectory, { recursive: true })

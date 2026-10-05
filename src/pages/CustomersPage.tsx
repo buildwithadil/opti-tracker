@@ -1,19 +1,23 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Plus, Search } from 'lucide-react'
-import type { Customer, CustomerListQuery } from '../../shared/customers'
+import type { CustomerListQuery } from '../../shared/customers'
+import type { ShopCustomer } from '../../shared/shop'
 import { formatIndianMobile } from '../../shared/phone'
 import { Button } from '../components/ui/Button'
 import { Card, CardContent } from '../components/ui/Card'
 import { TextInput } from '../components/ui/Field'
 import { PageHeader } from '../components/ui/PageHeader'
 import { ErrorState, LoadingState } from '../components/ui/States'
-import { customerDate, customerErrorMessage, customerKeys, customersApi } from '../lib/customers'
+import { customerDate, customerErrorMessage } from '../lib/customers'
+import { shopApi } from '../lib/shop'
+import { purchaseMoney } from '../lib/purchases'
+import { ActionLink } from '../components/ui/ShopUI'
 
 type ListQuery = Required<CustomerListQuery>
 const selectClass = 'h-11 w-full rounded-md border border-line bg-white px-3 text-sm text-ink'
-const primaryLinkClass = 'inline-flex h-10 items-center justify-center gap-2 rounded-md bg-ink px-4 text-sm font-medium text-white hover:bg-ink/90'
+const primaryLinkClass = 'inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-accent px-4 text-sm font-semibold text-white hover:bg-accent/90'
 
 function boundedNumber(value: string | null, fallback: number, max: number) {
   if (!value || !/^[1-9][0-9]*$/u.test(value)) return fallback
@@ -47,25 +51,20 @@ export function CustomerStatus({ archived }: { archived: boolean }) {
 }
 
 function CustomerSearch({ initialValue, onSearch }: { initialValue: string; onSearch: (search: string) => void }) {
-  const [value, setValue] = useState(initialValue)
-  const [error, setError] = useState('')
+  const value=initialValue
+  const error=/[\p{Cc}\p{Cf}\u2028\u2029]/u.test(value) ? 'Search must not contain control characters.' : ''
   return (
     <form
       className="min-w-0 flex-1"
       role="search"
       onSubmit={(event) => {
         event.preventDefault()
-        if (/[\p{Cc}\p{Cf}\u2028\u2029]/u.test(value)) {
-          setError('Search must not contain control characters.')
-          return
-        }
-        setError('')
-        onSearch(value.trim())
+        if (!error) onSearch(value)
       }}
     >
       <label htmlFor="customer-search" className="mb-2 block text-sm font-medium text-ink">Search customers</label>
       <div className="flex gap-2">
-        <TextInput id="customer-search" type="search" placeholder="Name or mobile number" maxLength={100} value={value} onChange={(event) => setValue(event.target.value)} aria-invalid={!!error} aria-describedby={error ? 'customer-search-error' : undefined} />
+        <TextInput id="customer-search" type="search" placeholder="Name or mobile number" maxLength={100} value={value} onChange={(event) => onSearch(event.target.value)} aria-invalid={!!error} aria-describedby={error ? 'customer-search-error' : undefined} />
         <Button type="submit" variant="secondary" className="h-11" icon={<Search className="size-4" aria-hidden="true" />}>Search</Button>
       </div>
       {error ? <p id="customer-search-error" className="mt-1.5 text-xs text-red-700" role="alert">{error}</p> : null}
@@ -73,7 +72,7 @@ function CustomerSearch({ initialValue, onSearch }: { initialValue: string; onSe
   )
 }
 
-function CustomerTable({ customers }: { customers: Customer[] }) {
+function CustomerTable({ customers }: { customers: ShopCustomer[] }) {
   return (
     <>
       <div className="hidden overflow-x-auto md:block">
@@ -85,6 +84,7 @@ function CustomerTable({ customers }: { customers: Customer[] }) {
               <th scope="col" className="px-4 py-3 font-medium">Phone</th>
               <th scope="col" className="px-4 py-3 font-medium">Status</th>
               <th scope="col" className="px-4 py-3 font-medium">Date added</th>
+              <th scope="col" className="px-4 py-3 font-medium">Outstanding</th>
               <th scope="col" className="px-6 py-3 text-right font-medium">Actions</th>
             </tr>
           </thead>
@@ -97,7 +97,8 @@ function CustomerTable({ customers }: { customers: Customer[] }) {
                 <td className="whitespace-nowrap px-4 py-4 text-muted">{formatIndianMobile(customer.normalized_phone)}</td>
                 <td className="px-4 py-4"><CustomerStatus archived={!!customer.archived_at} /></td>
                 <td className="whitespace-nowrap px-4 py-4 text-muted"><time dateTime={customer.created_at}>{customerDate(customer.created_at)}</time></td>
-                <td className="px-6 py-4 text-right"><Link to={`/customers/${customer.uuid}`} className="rounded-sm font-medium text-ink underline underline-offset-4 hover:no-underline" aria-label={`View ${customer.name}`}>View</Link></td>
+                <td className="px-4 py-4 font-semibold tabular-nums">{customer.outstanding_paise===null ? 'Review needed' : purchaseMoney(customer.outstanding_paise)}</td>
+                <td className="px-6 py-4 text-right"><ActionLink secondary to={`/customers/${customer.uuid}`} aria-label={`View ${customer.name}`}>View</ActionLink></td>
               </tr>
             ))}
           </tbody>
@@ -111,10 +112,13 @@ function CustomerTable({ customers }: { customers: Customer[] }) {
               <CustomerStatus archived={!!customer.archived_at} />
             </div>
             <p className="text-sm text-muted">{formatIndianMobile(customer.normalized_phone)}</p>
+            <p className="text-sm text-muted">Outstanding <strong className="tabular-nums text-ink">{customer.outstanding_paise===null ? 'Review needed' : purchaseMoney(customer.outstanding_paise)}</strong></p>
+            <p className="text-sm text-muted">{customer.last_sale ? `Last sale ${customer.last_sale.purchase_date} · ${purchaseMoney(customer.last_sale.total_paise)}` : 'No sales yet'}</p>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-xs text-muted">Date added <time dateTime={customer.created_at}>{customerDate(customer.created_at)}</time></p>
-              <Link to={`/customers/${customer.uuid}`} className="rounded-sm text-sm font-medium text-ink underline underline-offset-4 hover:no-underline" aria-label={`View ${customer.name}`}>View profile</Link>
+              <ActionLink secondary to={`/customers/${customer.uuid}`} aria-label={`View ${customer.name}`}>View profile</ActionLink>
             </div>
+            {!customer.archived_at ? <div className="flex flex-wrap gap-2"><ActionLink secondary to={`/sales/new?customer=${customer.uuid}`}>New Sale</ActionLink>{customer.outstanding_paise!==null && customer.outstanding_paise>0 ? <ActionLink secondary to={`/receive-payment?customer=${customer.uuid}`}>Receive Payment</ActionLink> : null}</div> : null}
           </li>
         ))}
       </ul>
@@ -124,8 +128,12 @@ function CustomerTable({ customers }: { customers: Customer[] }) {
 
 export function CustomersPage() {
   const [params, setParams] = useSearchParams()
-  const query = readQuery(params)
-  const customers = useQuery({ queryKey: customerKeys.list(query), queryFn: ({ signal }) => customersApi.list(query, signal), retry: false })
+  const query = useMemo(()=>readQuery(params),[params])
+  const [search,setSearch]=useState(query.search)
+  useEffect(()=>{ const timer=setTimeout(()=>setSearch(query.search),200); return ()=>clearTimeout(timer) },[query.search])
+  const requestQuery={ ...query,search }
+  const validSearch=!/[\p{Cc}\p{Cf}\u2028\u2029]/u.test(search)
+  const customers = useQuery({ queryKey: ['shop','customers',requestQuery], queryFn: ({ signal }) => shopApi.customers(requestQuery, signal), enabled: validSearch,staleTime: 0,retry: false })
   const lastPage = Math.min(customers.data?.pagination.totalPages ?? 1, 10_000)
   const outsidePage = customers.isSuccess && query.page > lastPage
 
@@ -133,18 +141,19 @@ export function CustomersPage() {
     if (outsidePage) setParams(queryParams({ ...query, page: lastPage }), { replace: true })
   }, [outsidePage, lastPage, query, setParams])
 
-  const updateQuery = (updates: Partial<ListQuery>) => setParams(queryParams({ ...query, page: 1, ...updates }))
+  const updateQuery = useCallback((updates: Partial<ListQuery>) => setParams(queryParams({ ...query, page: 1, ...updates })),[query,setParams])
+  const searchCustomers=useCallback((search: string)=>{ if (search!==params.get('search')) setParams(queryParams({ ...query,search,page: 1 }),{ replace: true }) },[params,query,setParams])
   const pagination = customers.data?.pagination
   const firstRecord = pagination && pagination.total > 0 ? (query.page - 1) * query.pageSize + 1 : 0
   const lastRecord = pagination ? Math.min(query.page * query.pageSize, pagination.total) : 0
 
   return (
     <div className="space-y-7">
-      <PageHeader eyebrow="Customer management" title="Customers" description="Find customers, keep contact details current, and manage active or archived profiles." actions={<Link className={primaryLinkClass} to="/customers/new"><Plus className="size-4" aria-hidden="true" />Add Customer</Link>} />
+      <PageHeader title="Customers" description="Search by name or phone. See balances and start the next sale." actions={<Link className={primaryLinkClass} to="/customers/new"><Plus className="size-4" aria-hidden="true" />Add Customer</Link>} />
       <Card>
         <CardContent className="space-y-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-            <CustomerSearch key={query.search} initialValue={query.search} onSearch={(search) => updateQuery({ search })} />
+            <CustomerSearch initialValue={params.get('search') ?? ''} onSearch={searchCustomers} />
             <div className="sm:w-44">
               <label htmlFor="customer-status" className="mb-2 block text-sm font-medium text-ink">Customer status</label>
               <select id="customer-status" className={selectClass} value={query.status} onChange={(event) => updateQuery({ status: event.target.value as ListQuery['status'] })}>
@@ -152,7 +161,7 @@ export function CustomersPage() {
               </select>
             </div>
           </div>
-          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_8rem]">
+          <details><summary className="min-h-11 cursor-pointer text-sm font-semibold">Sort & list options</summary><div className="mt-3 grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_8rem]">
             <div>
               <label htmlFor="customer-sort" className="mb-2 block text-sm font-medium text-ink">Sort by</label>
               <select id="customer-sort" className={selectClass} value={query.sort} onChange={(event) => updateQuery({ sort: event.target.value as ListQuery['sort'] })}>
@@ -172,11 +181,11 @@ export function CustomersPage() {
                 {Array.from(new Set([10, 20, 50, query.pageSize])).sort((a, b) => a - b).map((size) => <option key={size} value={size}>{size}</option>)}
               </select>
             </div>
-          </div>
+          </div></details>
           {query.search || query.status !== 'active' ? <Button size="sm" variant="ghost" onClick={() => updateQuery({ search: '', status: 'active' })}>Clear filters</Button> : null}
         </CardContent>
       </Card>
-      {customers.isPending || outsidePage ? <LoadingState label="Loading customers…" /> : null}
+      {validSearch && (customers.isPending || outsidePage) ? <LoadingState label="Loading customers…" /> : null}
       {customers.isError ? <ErrorState title="Customers could not be loaded" description={customerErrorMessage(customers.error)} onRetry={() => void customers.refetch()} /> : null}
       {customers.isSuccess && !outsidePage ? (
         <Card>

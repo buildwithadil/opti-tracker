@@ -1,6 +1,6 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import type { Invoice } from '../../shared/invoices'
 import { paymentMethodLabels, paymentStatusLabels, type PaymentMethod } from '../../shared/payments'
 import { asPaise, formatPaise } from '../../shared/money'
@@ -16,8 +16,10 @@ import '../invoice.css'
 
 export function InvoicePage() {
   const { uuid = '', purchaseUuid = '' } = useParams(), client = useQueryClient()
+  const location=useLocation(), printed=useRef(false)
   const lock = useRef(false), submission = useRef(crypto.randomUUID())
   const invoice = useQuery({ queryKey: invoiceKeys.purchase(uuid, purchaseUuid), queryFn: ({ signal }) => invoicesApi.get(uuid, purchaseUuid, signal), retry: false })
+  useEffect(()=>{ if (invoice.data && location.state?.printInvoice && !printed.current) { printed.current=true; void document.fonts.ready.then(()=>window.print()) } },[invoice.data,location.state])
   const needsGeneration = invoice.isSuccess && invoice.data === null
   const customer = useQuery({ queryKey: customerKeys.detail(uuid), queryFn: ({ signal }) => customersApi.detail(uuid, signal), enabled: needsGeneration, retry: false })
   const purchase = useQuery({ queryKey: purchaseKeys.detail(uuid, purchaseUuid), queryFn: ({ signal }) => purchasesApi.detail(uuid, purchaseUuid, signal), enabled: needsGeneration, retry: false })

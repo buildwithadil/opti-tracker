@@ -40,7 +40,7 @@ test('owner setup, real sessions, navigation, password change, and mobile access
     await expect(page.getByText('Passwords must match.')).toBeVisible()
     await page.getByLabel('Confirm password', { exact: true }).fill(password)
     await page.getByRole('button', { name: 'Complete one-time setup' }).click()
-    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible()
     const cookies = await context.cookies()
     const session = cookies.find(cookie => cookie.name === 'optidesk_session')
     expect(session?.httpOnly).toBe(true)
@@ -50,10 +50,15 @@ test('owner setup, real sessions, navigation, password change, and mobile access
 
   await test.step('all seven desktop routes work without mock stats or unavailable API calls', async () => {
     await page.reload()
-    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible()
     const navigation = page.getByRole('navigation', { name: 'Primary navigation', exact: true })
-    for (const name of ['Customers', 'Sales & Purchases', 'Prescriptions', 'Payments', 'Reports', 'Settings', 'Dashboard']) {
+    for (const name of ['Customers', 'Sales', 'More', 'Home']) {
       await navigation.getByRole('link', { name, exact: true }).click()
+      await expect(page.locator('main h1')).toBeVisible()
+      await expect(page.getByText('The server returned an unexpected response.')).toHaveCount(0)
+    }
+    for (const route of ['/prescriptions','/receive-payment','/payments/history','/reports','/settings']) {
+      await page.goto(route)
       await expect(page.locator('main h1')).toBeVisible()
       await expect(page.getByText('The server returned an unexpected response.')).toHaveCount(0)
     }
@@ -73,7 +78,7 @@ test('owner setup, real sessions, navigation, password change, and mobile access
     await expect(page.getByRole('alert')).toContainText('Email or password is incorrect.')
     await page.getByLabel('Password', { exact: true }).fill(replacement)
     await page.getByRole('button', { name: 'Sign in', exact: true }).click()
-    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'Sign out', exact: true }).click()
     await expect(page.getByRole('heading', { name: 'Administrator sign in' })).toBeVisible()
   })
@@ -83,15 +88,11 @@ test('owner setup, real sessions, navigation, password change, and mobile access
     await page.getByLabel('Email address').fill(email)
     await page.getByLabel('Password', { exact: true }).fill(replacement)
     await page.getByRole('button', { name: 'Sign in', exact: true }).click()
-    await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
-    const trigger = page.getByRole('button', { name: 'Open navigation' })
-    await trigger.click()
-    await expect(page.getByRole('dialog')).toBeVisible()
-    await page.keyboard.press('Escape')
-    await expect(page.getByRole('dialog')).not.toBeVisible()
-    await expect(trigger).toBeFocused()
-    await trigger.click()
-    await page.getByRole('navigation', { name: 'Mobile primary navigation' }).getByRole('link', { name: 'Customers', exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible()
+    const customers=page.getByRole('navigation', { name: 'Mobile primary navigation' }).getByRole('link', { name: 'Customers', exact: true })
+    await customers.focus()
+    await expect(customers).toBeFocused()
+    await page.keyboard.press('Enter')
     await expect(page.getByRole('heading', { name: 'Customers', exact: true })).toBeVisible()
     await expect(page.getByRole('dialog')).not.toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
@@ -101,6 +102,6 @@ test('owner setup, real sessions, navigation, password change, and mobile access
   expect([...apiPaths].every(path => [
     '/api/auth/session', '/api/auth/setup', '/api/auth/login',
     '/api/auth/logout', '/api/auth/change-password', '/api/shop/identity', '/api/shop/invoice-identity', '/api/customers',
-    '/api/reports/dashboard', '/api/reports/sales',
+    '/api/reports/dashboard', '/api/reports/sales', '/api/reports/outstanding','/api/shop/customers','/api/shop/payments','/api/sales',
   ].includes(path))).toBe(true)
 })

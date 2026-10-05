@@ -1,12 +1,12 @@
 # OptiDesk project status
 
-Last verified: 5 October 2026. Current handoff: Phase 8 local acceptance and deployment readiness.
+Last verified: 6 October 2026. Current handoff: mobile-first redesign locally accepted; remote staging and production remain approval-gated.
 
 ## Current stage
 
-**Phase 8 — Final Testing, Deployment & Production Readiness: local acceptance complete; remote staging and production approval blocked by the prerequisites below. The application is not deployed or approved for production use.**
+**Mobile-first redesign after Phase 8 — local acceptance complete; remote staging and production approval blocked by the prerequisites below. The application is not deployed or approved for production use.**
 
-Phases 1–7 are committed through `ea6f27e feat: implement reports and exports`. Phase 8 began from that clean checkpoint; its changes are uncommitted. It verifies the delivered application and recovery process without adding business modules or migrations.
+Phases 1–7 are committed through `ea6f27e feat: implement reports and exports`; the Phase 8 baseline is `e948138 chore: complete OptiDesk production readiness`. The redesign is uncommitted review work on `redesign/mobile-first-shop-workflow`. It adds no migration and preserves the persistent local database.
 
 ## Delivered
 
@@ -17,6 +17,8 @@ Phases 1–7 are committed through `ea6f27e feat: implement reports and exports`
 - Customer reports: total/active/archived profiles, customers with purchases/debts and paginated minimal contact/current-credit details.
 - Category reports: seven established immutable category snapshots, line counts, quantity and recorded line sales; an explicit unknown-legacy bucket retains unrecognized categories. Purchase discounts are not allocated to categories.
 - Operational dashboard: today's sales/collections/purchase count, current total credit/customer/debtor counts and effective payment-method totals.
+- Mobile-first shop workflow: Home/Sales/Customers/More shell, persistent New Sale, direct Receive Payment and Outstanding, inline customer/prescription entry, customer summary/profile tabs and payment history.
+- Protected shop read views: all-date sales, customer balance/last-sale summaries and payment receipts with strict bounds, authoritative integer-paise balances and legacy review behavior.
 - Responsive reports with presets/custom validation, independent full-range SQL summaries, pagination, empty/loading/error/retry states and authenticated downloads.
 - Four on-demand UTF-8 CSV exports: sales, payments, outstanding and categories, with exact rupee decimals, quote/newline escaping, formula defenses and server-enforced row/byte limits.
 
@@ -25,8 +27,8 @@ Phases 1–7 are committed through `ea6f27e feat: implement reports and exports`
 | Gate | Actual result |
 |---|---|
 | TypeScript / ESLint | Passed |
-| Actual workerd/D1 tests | **1,073 passed across 29 files**, including all Phase 1–7 regressions and exact JSON Content-Type verification |
-| Real-backend Chromium | **42 passed**, including all 41 previous scenarios and the final workflow/recovery scenario |
+| Actual workerd/D1 tests | **1,099 passed across 31 files**, including Phase 1–8 regressions and redesign shop/legacy API checks |
+| Real-backend Chromium | **57 passed**, including the Rahul workflow, checkout/collection recovery and seven required viewports |
 | Existing invoice output | A4/native-print/short/multi-page/100-item PDF regressions passed |
 | Production build | Passed |
 | Dependency audit | **0 vulnerabilities** |
@@ -38,6 +40,8 @@ Phases 1–7 are committed through `ea6f27e feat: implement reports and exports`
 | Local preservation | Before/after full SQL byte-identical; original rows/fields/physical rowids/schema/migration/private-variable hashes unchanged |
 | Production artifacts | Built references/security headers/routing/bindings verified; known private secrets, live-record identifiers and test credentials absent from built runtime; private artifacts absent from seven committed histories |
 | Remote deployment / smoke | **Not performed**; approval, bindings, account quotas and deployed KDF CPU remain gates |
+
+The complete redesign result table and exact local staging/demo build verification are in [mobile-first redesign](docs/mobile-first-redesign.md). `npm run build:staging` selects `CLOUDFLARE_ENV=staging`, Worker `optidesk-staging`, binding `DB` and `VITE_DEMO_MODE=true`; no remote action is implied by that local build.
 
 `npm run check`, `CI=true WRANGLER_SEND_METRICS=false npm run test:e2e`, `npm audit` and `git diff --check` passed. After strengthening the final scenario with console/resource checks and all seven desktop/mobile routes, TypeScript/ESLint, its focused run and the complete **42-scenario browser/build suite** passed again. Existing Blaze sourcemap/chunk-size warnings and five intentional deferred-FK rollback diagnostics remain nonblocking; their regression assertions pass. See [Phase 8](docs/phase-eight.md) for actual results and fixes.
 

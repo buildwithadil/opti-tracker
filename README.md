@@ -2,7 +2,7 @@
 
 A single-owner optical shop application built with React/TypeScript, a Blaze REST API in Cloudflare Workers, and Cloudflare D1.
 
-**Delivered scope: authentication, customers, prescriptions, immutable purchases/payments, credit, invoice printing, operational reports and CSV exports. Phase 8 local final acceptance and isolated SQL recovery have passed; remote staging and production deployment remain pending approval and prerequisites.** Invoices preserve payment position at issue; reports use live authoritative balances. Dashboard summaries show real daily activity and current credit/customer counts.
+**Delivered scope: mobile-first optical-shop workflows across Home, New Sale, Receive Payment, Customers, Sales, prescriptions, immutable purchases/payments, credit, invoice printing, operational reports and CSV exports.** Phase 8 local final acceptance, redesign acceptance and isolated SQL recovery have passed; remote staging and production deployment remain pending approval and prerequisites. Invoices preserve payment position at issue; reports and shop views use live authoritative balances.
 
 See [PROJECT_STATUS.md](PROJECT_STATUS.md) for the current verification and handoff.
 
@@ -99,6 +99,8 @@ npm run build
 npm audit
 ```
 
+For the local demo/staging-shaped build, use `npm run build:staging`. It targets a named local Wrangler environment with `DB` explicitly bound to the approved empty staging resource and enables only the nonsecret `VITE_DEMO_MODE` banner. It does not migrate, deploy, set secrets or contact remote D1.
+
 Real-browser tests use a disposable **local-only** D1 database, the real Worker, and the built frontend:
 
 ```bash
@@ -108,7 +110,7 @@ npm run test:e2e
 
 Invoice print assertions additionally require the free Poppler tools `pdfinfo`, `pdftotext` and `pdftoppm` on `PATH`; they inspect actual PDF page geometry/text and rasterized ink margins. These tools were already installed in the verification environment. Test credentials in `e2e/` are fixtures only, not production defaults. No tests access a remote database. Browser test state is isolated in a temporary directory; failures, SQL recovery fixtures, PDFs, CSVs and screenshots are ignored in `test-results/`.
 
-Final verification: **1,073 real workerd/D1 tests in 29 files and 42 real-backend Chromium scenarios**, with TypeScript, ESLint, build and zero-vulnerability audit passing. The final browser scenario covers all seven desktop/mobile routes, browser console/resource checks, a complete paid customer→prescription→purchase→invoice→reports/CSV workflow and full isolated SQL recovery with unique reconciled invoice numbering. Existing local SQL exports and every original row/field/physical rowid, migration and private-variable hash remain identical. See [Phase 8](docs/phase-eight.md).
+Final verification: **1,099 real workerd/D1 tests in 31 files and 57 real-backend Chromium scenarios**, with TypeScript, ESLint, build and zero-vulnerability audit passing. The redesign suite covers the Rahul sale/collection journey, lost-response and stale-balance recovery, pending sheet locks, all seven required viewports and existing A4/SQL recovery assertions. Existing local SQL exports and every original row/field/physical rowid, migration and private-variable hash remain identical. See [mobile-first redesign](docs/mobile-first-redesign.md) and [Phase 8](docs/phase-eight.md).
 
 ## Production is not yet approved
 
@@ -122,4 +124,4 @@ No automated external backup is currently configured. D1 Free Time Travel provid
 
 ## Phase reports
 
-[Phases 1–6](docs/phase-six.md) and [Phase 7](docs/phase-seven.md) are historical checkpoints, committed through `ea6f27e`. [Phase 8](docs/phase-eight.md) records final local acceptance, concrete JSON-header/recovery fixes, **1,073 backend tests / 42 Chromium scenarios**, preservation evidence, production blockers and exact unexecuted staging/commit commands. Phase 8 changes are uncommitted; production readiness remains conditional on the remote gates.
+[Phases 1–6](docs/phase-six.md) and [Phase 7](docs/phase-seven.md) are historical checkpoints, committed through `ea6f27e`. [Phase 8](docs/phase-eight.md) records the baseline local acceptance, concrete JSON-header/recovery fixes, preservation evidence, production blockers and exact unexecuted staging/commit commands. The current redesign results are in [mobile-first redesign](docs/mobile-first-redesign.md); production readiness remains conditional on the remote gates.

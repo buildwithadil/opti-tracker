@@ -14,7 +14,12 @@ import { PurchaseCreatePage } from './pages/PurchaseFormPage'
 import { PurchaseDetailPage } from './pages/PurchaseDetailPage'
 import { PaymentCreatePage } from './pages/PaymentFormPage'
 import { InvoicePage } from './pages/InvoicePage'
-import { PaymentsPage, PrescriptionsPage, PurchasesPage } from './pages/WorkspacePages'
+import { PrescriptionsPage } from './pages/PrescriptionsPage'
+import { SalesPage } from './pages/SalesPage'
+import { NewSalePage } from './pages/NewSalePage'
+import { OutstandingPage } from './pages/OutstandingPage'
+import { ReceivePaymentPage } from './pages/ReceivePaymentPage'
+import { MorePage, PaymentHistoryPage } from './pages/MorePage'
 import { ReportsPage } from './pages/ReportsPage'
 import { SettingsPage } from './pages/SettingsPage'
 
@@ -56,9 +61,15 @@ export function App() {
           <Route path="customers/:uuid/purchases/:purchaseUuid" element={<PurchaseDetailPage />} />
           <Route path="customers/:uuid/purchases/:purchaseUuid/payments/new" element={<PaymentCreatePage />} />
           <Route path="customers/:uuid/purchases/:purchaseUuid/invoice" element={<InvoicePage />} />
-          <Route path="purchases" element={<PurchasesPage />} />
+          <Route path="sales" element={<SalesPage />} />
+          <Route path="sales/new" element={<NewSalePage />} />
+          <Route path="outstanding" element={<OutstandingPage />} />
+          <Route path="receive-payment" element={<ReceivePaymentPage />} />
+          <Route path="more" element={<MorePage />} />
+          <Route path="purchases" element={<SalesPage />} />
           <Route path="prescriptions" element={<PrescriptionsPage />} />
-          <Route path="payments" element={<PaymentsPage />} />
+          <Route path="payments" element={<ReceivePaymentPage />} />
+          <Route path="payments/history" element={<PaymentHistoryPage />} />
           <Route path="reports" element={<ReportsPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>

@@ -4,19 +4,19 @@ import { LoaderCircle } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex max-w-full items-center justify-center rounded-xl text-sm font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
-        primary: 'bg-ink text-white hover:bg-ink/90',
+        primary: 'bg-accent text-white hover:bg-accent/90',
         secondary: 'border border-line bg-white text-ink hover:bg-paper',
         ghost: 'text-muted hover:bg-paper hover:text-ink',
         danger: 'bg-red-700 text-white hover:bg-red-800',
       },
       size: {
-        sm: 'h-9 gap-1.5 px-3 text-xs',
-        md: 'h-10 gap-2 px-4',
-        lg: 'h-11 gap-2 px-5',
+        sm: 'min-h-11 gap-1.5 px-3 text-sm',
+        md: 'min-h-12 gap-2 px-4',
+        lg: 'min-h-13 gap-2 px-5',
       },
     },
     defaultVariants: { variant: 'primary', size: 'md' },

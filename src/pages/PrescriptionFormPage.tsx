@@ -8,7 +8,7 @@ import type { Prescription } from '../../shared/prescriptions'
 import { Button } from '../components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { ConfirmationDialog } from '../components/ui/ConfirmationDialog'
-import { Field, TextInput } from '../components/ui/Field'
+import { PrescriptionFields } from '../components/PrescriptionFields'
 import { PageHeader } from '../components/ui/PageHeader'
 import { ErrorState, LoadingState } from '../components/ui/States'
 import { ApiError } from '../lib/api'
@@ -33,7 +33,7 @@ function PrescriptionFormRoute({ revision }: { revision: boolean }) {
     enabled: revision && customer.isSuccess,
     retry: false,
   })
-  const backPath = revision ? `/customers/${uuid}/prescriptions/${prescriptionUuid}` : `/customers/${uuid}`
+  const backPath = revision ? `/customers/${uuid}/prescriptions/${prescriptionUuid}` : `/customers/${uuid}?tab=prescriptions`
   const backLink = <Link to={backPath} className="text-sm font-medium text-ink underline underline-offset-4">{revision ? 'Back to prescription' : 'Back to customer'}</Link>
   if (customer.isPending || (revision && customer.isSuccess && prescription.isPending)) return <LoadingState label="Loading prescription form…" />
   if (customer.isError) return <div className="space-y-5"><Link to="/customers" className="text-sm font-medium text-ink underline underline-offset-4">Back to customers</Link><ErrorState title={customer.error instanceof ApiError && customer.error.status === 404 ? 'Customer not found' : 'Customer could not be loaded'} description={customerErrorMessage(customer.error)} onRetry={() => void customer.refetch()} /></div>
@@ -122,14 +122,7 @@ function PrescriptionForm({ customer, prescription }: { customer: Customer; pres
       event.returnValue = ''
     }
   }, [shouldWarn]))
-  const errors = form.formState.errors
-  const cancelPath = prescription ? `/customers/${customer.uuid}/prescriptions/${prescription.uuid}` : `/customers/${customer.uuid}`
-  const input = (name: PrescriptionFieldName, label: string, options: { type?: 'text' | 'date'; inputMode?: 'text' | 'decimal' | 'numeric'; hint?: string; maxLength?: number; required?: boolean } = {}) => {
-    const id = `prescription-${name}`
-    return <Field key={name} id={id} label={label} error={errors[name]?.message} hint={options.hint}>
-      <TextInput id={id} type={options.type ?? 'text'} inputMode={options.inputMode} maxLength={options.maxLength} autoComplete="off" aria-required={options.required || undefined} aria-invalid={!!errors[name]} aria-describedby={errors[name] ? `${id}-error` : options.hint ? `${id}-hint` : undefined} {...form.register(name)} />
-    </Field>
-  }
+  const cancelPath = prescription ? `/customers/${customer.uuid}/prescriptions/${prescription.uuid}` : `/customers/${customer.uuid}?tab=prescriptions`
 
   return (
     <div className="space-y-7 [overflow-wrap:anywhere]">
@@ -151,40 +144,7 @@ function PrescriptionForm({ customer, prescription }: { customer: Customer; pres
           }}>
             <fieldset disabled={pending} className="space-y-6 disabled:opacity-70">
               <legend className="sr-only">Prescription values for {customer.name}</legend>
-              <div className="grid gap-5 sm:grid-cols-2">
-                {input('prescribed_on', 'Prescription date', { type: 'date', required: true, hint: 'Required. Use the date on the supplied prescription.' })}
-                {input('expires_on', 'Expiry / recheck date', { type: 'date', hint: 'Optional. Leave blank if not supplied.' })}
-              </div>
-              <p className="text-sm leading-6 text-muted">OD is the right eye; OS is the left eye. SPH, CYL and ADD are signed diopters (D). Copy plus or minus exactly. AXIS is optional, in degrees (0–180). Blank means unknown, not zero.</p>
-              <div className="grid gap-6 md:grid-cols-2">
-                {(['right', 'left'] as const).map(eye => {
-                  const label = eye === 'right' ? 'Right' : 'Left'
-                  return <fieldset key={eye} className="min-w-0 rounded-md border border-line p-4">
-                    <legend className="px-1 text-sm font-semibold text-ink">{label} eye ({eye === 'right' ? 'OD' : 'OS'})</legend>
-                    <div className="grid gap-5 sm:grid-cols-2">
-                      {input(`${eye}_sphere`, `${label} SPH (D)`, { inputMode: 'text', hint: 'Signed value, e.g. -1.25 or +0.50.' })}
-                      {input(`${eye}_cylinder`, `${label} CYL (D)`, { inputMode: 'text', hint: 'Optional signed value.' })}
-                      {input(`${eye}_axis`, `${label} AXIS (°)`, { inputMode: 'numeric', hint: 'Optional whole number, 0–180.' })}
-                      {input(`${eye}_addition`, `${label} ADD (D)`, { inputMode: 'text', hint: 'Optional signed value.' })}
-                    </div>
-                  </fieldset>
-                })}
-              </div>
-              <fieldset className="rounded-md border border-line p-4">
-                <legend className="px-1 text-sm font-semibold text-ink">Pupillary distance (PD)</legend>
-                <p className="mb-5 text-sm leading-6 text-muted">Optional dispensing measurements in millimetres. Enter only supplied values; total, near and monocular PDs are not calculated from each other.</p>
-                <div className="grid gap-5 sm:grid-cols-2">
-                  {input('distance_pd', 'Distance PD (mm)', { inputMode: 'decimal', hint: 'Optional positive measurement.' })}
-                  {input('near_pd', 'Near PD (mm)', { inputMode: 'decimal', hint: 'Optional positive measurement.' })}
-                  {input('right_pd', 'Right monocular PD (mm)', { inputMode: 'decimal', hint: 'Optional positive measurement.' })}
-                  {input('left_pd', 'Left monocular PD (mm)', { inputMode: 'decimal', hint: 'Optional positive measurement.' })}
-                </div>
-              </fieldset>
-              {input('prescriber_name', 'Prescriber name', { maxLength: 200, hint: 'Optional. Up to 200 characters.' })}
-              <Field id="prescription-notes" label="Prescription notes" error={errors.notes?.message} hint="Optional. Up to 2,000 characters; line breaks are allowed.">
-                <textarea id="prescription-notes" className="min-h-28 w-full rounded-md border border-line bg-white px-3 py-2 text-sm text-ink aria-invalid:border-red-700" maxLength={2000} autoComplete="off" aria-invalid={!!errors.notes} aria-describedby={errors.notes ? 'prescription-notes-error' : 'prescription-notes-hint'} {...form.register('notes')} />
-              </Field>
-              {prescription ? input('revision_reason', 'Revision reason', { required: true, maxLength: 500, hint: 'Required. Explain why this replacement is being recorded (up to 500 characters).' }) : null}
+              <PrescriptionFields form={form} revision={!!prescription} />
               {savePrescription.isError ? <p className="text-sm leading-6 text-red-700" role="alert">{prescriptionErrorMessage(savePrescription.error)}</p> : null}
               <div className="flex flex-wrap gap-3 border-t border-line pt-5">
                 <Button type="submit" loading={pending} disabled={!!prescription && !form.formState.isDirty}>{prescription ? 'Save revision' : 'Save prescription'}</Button>

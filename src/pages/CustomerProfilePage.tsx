@@ -1,11 +1,14 @@
 import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { Archive, ArrowLeft, Pencil, RotateCcw } from 'lucide-react'
 import { formatIndianMobile } from '../../shared/phone'
 import { PrescriptionHistory } from '../components/PrescriptionHistory'
 import { PurchaseHistory } from '../components/PurchaseHistory'
 import { CustomerCredit } from '../components/CustomerCredit'
+import { ShopPaymentHistory } from '../components/ShopPaymentHistory'
+import { ActionLink, NewSaleLink, Tabs } from '../components/ui/ShopUI'
+import { refreshShop } from '../lib/shop'
 import { Button } from '../components/ui/Button'
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { ConfirmationDialog } from '../components/ui/ConfirmationDialog'
@@ -20,6 +23,9 @@ type CustomerAction = 'archive' | 'restore'
 export function CustomerProfilePage() {
   const { uuid = '' } = useParams()
   const location = useLocation()
+  const [params,setParams]=useSearchParams()
+  const tabs=['Overview','Sales','Prescriptions','Payments']
+  const tab=tabs.find(value=>value.toLowerCase()===params.get('tab')) ?? 'Overview'
   const queryClient = useQueryClient()
   const actionLock = useRef(false)
   const [confirmation, setConfirmation] = useState<CustomerAction | null>(null)
@@ -29,7 +35,7 @@ export function CustomerProfilePage() {
     mutationFn: (action: CustomerAction) => action === 'archive' ? customersApi.archive(uuid) : customersApi.restore(uuid),
     onSuccess: async (result, action) => {
       queryClient.setQueryData(customerKeys.detail(uuid), result)
-      await queryClient.invalidateQueries({ queryKey: customerKeys.all })
+      await refreshShop(queryClient)
       setConfirmation(null)
       setNotice(action === 'archive' ? 'Customer archived. The profile is still available.' : 'Customer restored to the active list.')
     },
@@ -54,7 +60,7 @@ export function CustomerProfilePage() {
       <PageHeader
         eyebrow="Customer profile"
         title={record.name}
-        description="Contact details, profile status, prescriptions and recorded purchase history."
+        description={formatIndianMobile(record.normalized_phone)}
         actions={
           <>
             <Link to={`/customers/${record.uuid}/edit`} className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-line bg-white px-4 text-sm font-medium text-ink hover:bg-paper"><Pencil className="size-4" aria-hidden="true" />Edit customer</Link>
@@ -63,6 +69,11 @@ export function CustomerProfilePage() {
         }
       />
       {notice || routeNotice ? <p className="rounded-md border border-line bg-white px-4 py-3 text-sm text-ink" role="status">{notice || routeNotice}</p> : null}
+      {!archived ? <div className="grid grid-cols-2 gap-3"><NewSaleLink customer={record.uuid} /><ActionLink secondary to={`/receive-payment?customer=${record.uuid}`}>Receive Payment</ActionLink></div> : null}
+      <CustomerCredit key={`credit:${record.uuid}`} customerUuid={record.uuid} />
+      <Tabs tabs={tabs} value={tab} label="Customer sections" panelId="customer-panel" onChange={value=>setParams({ tab: value.toLowerCase() },{ replace: true })} />
+      <section id="customer-panel" role="tabpanel" aria-label={tab} tabIndex={0} className="space-y-5">
+      {tab==='Overview' ? <>
       <Card>
         <CardHeader><CardTitle>Customer details</CardTitle></CardHeader>
         <CardContent>
@@ -77,9 +88,8 @@ export function CustomerProfilePage() {
           {archived ? <p className="mt-6 border-t border-line pt-5 text-sm leading-6 text-muted">This customer is archived and excluded from the active list. The record has not been deleted. You may edit details or restore it when needed.</p> : null}
         </CardContent>
       </Card>
-      <PrescriptionHistory key={record.uuid} customer={record} />
-      <CustomerCredit key={`credit:${record.uuid}`} customerUuid={record.uuid} />
-      <PurchaseHistory key={`purchases:${record.uuid}`} customer={record} />
+      </> : tab==='Prescriptions' ? <PrescriptionHistory key={record.uuid} customer={record} /> : tab==='Sales' ? <PurchaseHistory key={`purchases:${record.uuid}`} customer={record} /> : <ShopPaymentHistory key={`payments:${record.uuid}`} customer={record.uuid} />}
+      </section>
       <ConfirmationDialog
         open={confirmation !== null}
         title={confirmation === 'restore' ? 'Restore customer?' : 'Archive customer?'}

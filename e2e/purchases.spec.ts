@@ -26,6 +26,7 @@ for (const viewport of [{ label: 'Desktop', width: 1440, height: 960, suffix: '1
     const prescription = (await prescriptionResponse.json()).data as { uuid: string }
     await page.goto(`/customers/${profile.uuid}`)
     await expect(page.getByRole('heading', { name: `${viewport.label} Purchase profile`, exact: true })).toBeVisible()
+    await page.getByRole('tab',{ name: 'Sales',exact: true }).click()
     await expect(page.getByRole('heading', { name: 'No purchases yet', exact: true })).toBeVisible()
     await page.getByRole('link', { name: 'Add purchase', exact: true }).click()
     await expect(page.getByRole('heading', { name: 'Add purchase', exact: true })).toBeVisible()
@@ -60,7 +61,7 @@ for (const viewport of [{ label: 'Desktop', width: 1440, height: 960, suffix: '1
     expect(purchase).toMatchObject({ prescription_uuid: prescription.uuid, subtotal_paise: 25130, discount_paise: 151, total_paise: 24979 })
     expect(purchase.items).toHaveLength(2)
     await expect(page).toHaveURL(new RegExp(`/customers/${profile.uuid}/purchases/${purchase.uuid}$`, 'u'))
-    await expect(page.getByRole('heading', { name: 'Purchase details', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Sale details', exact: true })).toBeVisible()
     await expect(page.getByRole('status').filter({ hasText: 'Purchase saved.' })).toContainText('Purchase saved.')
     await expect(page.getByTestId('purchase-grand-total')).toHaveText('₹249.79')
     await expect(page.getByRole('list', { name: 'Purchase items', exact: true }).getByRole('listitem')).toHaveCount(2)
@@ -92,6 +93,7 @@ for (const viewport of [{ label: 'Desktop', width: 1440, height: 960, suffix: '1
     let writes = 0
     page.on('request', request => { if (new URL(request.url()).pathname === api && request.method() === 'POST') writes++ })
     await page.goto(`/customers/${profile.uuid}`)
+    await page.getByRole('tab',{ name: 'Sales',exact: true }).click()
     await page.getByRole('link', { name: 'Add purchase', exact: true }).click()
     await expect(page.getByText('No prescriptions recorded. You can save this purchase without one.', { exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'Remove item 1', exact: true }).click()
@@ -162,6 +164,7 @@ for (const viewport of [{ label: 'Desktop', width: 1440, height: 960, suffix: '1
     const allResponse = await page.request.get(`${api}?pageSize=50`)
     const all = (await allResponse.json()).data as PurchaseList
     await page.goto(`/customers/${profile.uuid}`)
+    await page.getByRole('tab',{ name: 'Sales',exact: true }).click()
     const history = page.getByRole('list', { name: 'Purchase history', exact: true })
     const pagination = page.getByRole('navigation', { name: 'Purchase history pagination', exact: true })
     await expect(history.getByRole('listitem')).toHaveCount(20)

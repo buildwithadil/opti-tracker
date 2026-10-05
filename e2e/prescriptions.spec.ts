@@ -63,9 +63,11 @@ for (const viewport of [
 
     await test.step('empty real history and strict client validation preserve values without a write', async () => {
       await page.goto(`/customers/${profile.uuid}`)
+      await page.getByRole('tab',{ name: 'Prescriptions',exact: true }).click()
       await expect(page.getByRole('heading', { name: 'No prescriptions yet', exact: true })).toBeVisible()
       await page.getByRole('link', { name: 'Add prescription', exact: true }).click()
       await expect(page.getByRole('heading', { name: 'Add prescription', exact: true })).toBeVisible()
+      await page.getByText('More prescription details',{ exact: true }).click()
       await expect(page.getByLabel('Prescription date', { exact: true })).toHaveValue(/^\d{4}-\d{2}-\d{2}$/u)
       for (const label of ['Right SPH (D)', 'Right CYL (D)', 'Right AXIS (°)', 'Right ADD (D)', 'Left SPH (D)',
         'Left CYL (D)', 'Left AXIS (°)', 'Left ADD (D)', 'Distance PD (mm)', 'Near PD (mm)',
@@ -240,8 +242,10 @@ for (const viewport of [
       if (path.includes('/prescriptions') && request.method() !== 'GET') writes.push(path)
     })
     await page.goto(`/customers/${profile.uuid}`)
+    await page.getByRole('tab',{ name: 'Prescriptions',exact: true }).click()
     await page.getByRole('link', { name: 'Add prescription', exact: true }).click()
     await page.getByLabel('Right SPH (D)', { exact: true }).fill('-1.13')
+    await page.getByText('More prescription details',{ exact: true }).click()
     await page.getByLabel('Prescription notes', { exact: true }).fill('Unsaved private clinical text')
     const dialog = page.getByRole('dialog', { name: 'Discard unsaved changes?', exact: true })
     for (const action of ['cancel', 'internal', 'back']) {
@@ -310,6 +314,7 @@ for (const viewport of [
     expect(list.pagination.total).toBe(22)
     expect(list.prescriptions[0].uuid).toBe(independent.uuid)
     await page.goto(`/customers/${profile.uuid}`)
+    await page.getByRole('tab',{ name: 'Prescriptions',exact: true }).click()
     const history = page.getByRole('list', { name: 'Prescription history', exact: true })
     const pagination = page.getByRole('navigation', { name: 'Prescription history pagination', exact: true })
     await expect(history.getByRole('listitem')).toHaveCount(20)

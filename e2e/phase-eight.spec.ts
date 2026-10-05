@@ -30,7 +30,7 @@ test('final isolated owner → clinical → purchase → two payments → invoic
     }
     await page.goto('/unknown-final-check-route')
     await expect(page).toHaveURL(/\/dashboard$/u)
-    await expect(page.getByRole('heading',{ name: 'Dashboard',exact: true })).toBeVisible()
+    await expect(page.getByRole('heading',{ name: 'Home',exact: true })).toBeVisible()
   }
   await page.setViewportSize({ width: 1440,height: 960 })
   await page.goto('/settings')
@@ -47,11 +47,13 @@ test('final isolated owner → clinical → purchase → two payments → invoic
   await page.getByRole('button',{ name: 'Save customer',exact: true }).click()
   const customer = (await (await customerResponse).json()).data as Customer
   await expect(page.getByRole('heading',{ name: customer.name,exact: true })).toBeVisible()
+  await page.getByRole('tab',{ name: 'Prescriptions',exact: true }).click()
   await page.getByRole('link',{ name: 'Add prescription',exact: true }).click()
   await page.getByLabel('Prescription date',{ exact: true }).fill('2020-01-17')
   await page.getByLabel('Right SPH (D)',{ exact: true }).fill('-1.25')
   await page.getByLabel('Left SPH (D)',{ exact: true }).fill('-2.00')
   await page.getByLabel('Distance PD (mm)',{ exact: true }).fill('63.50')
+  await page.getByText('More prescription details',{ exact: true }).click()
   await page.getByLabel('Prescription notes',{ exact: true }).fill("Original clinician's note; exact\nSecond line")
   const prescriptionResponse = page.waitForResponse(response => new URL(response.url()).pathname === `/api/customers/${customer.uuid}/prescriptions` && response.request().method() === 'POST')
   await page.getByRole('button',{ name: 'Save prescription',exact: true }).click()

@@ -15,3 +15,8 @@ export const prescriptionFormSchema = prescriptionFieldsSchema.extend({ revision
 
 export type PrescriptionFormValues = z.input<typeof prescriptionFormSchema>
 export type PrescriptionSaveValues = z.output<typeof prescriptionFormSchema>
+
+export function prescriptionDefaults(): PrescriptionFormValues {
+  const date=new Date()
+  return { prescribed_on: `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`,expires_on: '',right_sphere: '',right_cylinder: '',right_axis: '',right_addition: '',left_sphere: '',left_cylinder: '',left_axis: '',left_addition: '',distance_pd: '',near_pd: '',right_pd: '',left_pd: '',prescriber_name: '',notes: '' }
+}

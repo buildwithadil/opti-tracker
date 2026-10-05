@@ -9,13 +9,14 @@ import { prescriptionDate } from '../lib/prescriptions'
 import { categoryLabel, purchaseErrorMessage, purchaseKeys, purchaseMoney, purchasesApi } from '../lib/purchases'
 import { PaymentHistory } from '../components/PaymentHistory'
 import { PaymentStatusBadge, PurchasePaymentSummary } from '../components/PaymentSummary'
+import { ActionLink } from '../components/ui/ShopUI'
 
 export function PurchaseDetailPage() {
   const { uuid = '', purchaseUuid = '' } = useParams()
   const location = useLocation()
   const customer = useQuery({ queryKey: customerKeys.detail(uuid), queryFn: ({ signal }) => customersApi.detail(uuid, signal), retry: false })
   const purchase = useQuery({ queryKey: purchaseKeys.detail(uuid, purchaseUuid), queryFn: ({ signal }) => purchasesApi.detail(uuid, purchaseUuid, signal), enabled: customer.isSuccess, retry: false })
-  const back = <Link to={`/customers/${uuid}`} className="text-sm font-medium text-ink underline underline-offset-4">Back to customer</Link>
+  const back = <Link to={`/customers/${uuid}?tab=sales`} className="text-sm font-medium text-ink underline underline-offset-4">Back to customer</Link>
   if (customer.isPending || (customer.isSuccess && purchase.isPending)) return <LoadingState label="Loading purchase details…" />
   if (customer.isError) return <div className="space-y-5"><Link to="/customers" className="text-sm text-ink underline">Back to customers</Link><ErrorState title="Customer could not be loaded" description={customerErrorMessage(customer.error)} onRetry={() => void customer.refetch()} /></div>
   if (purchase.isError) return <div className="space-y-5">{back}<ErrorState title={purchase.error instanceof ApiError && purchase.error.status === 404 ? 'Purchase not found' : 'Purchase could not be loaded'} description={purchaseErrorMessage(purchase.error)} onRetry={() => void purchase.refetch()} /></div>
@@ -23,7 +24,7 @@ export function PurchaseDetailPage() {
   const record = purchase.data
   const notice = typeof location.state?.paymentNotice === 'string' ? location.state.paymentNotice : typeof location.state?.purchaseNotice === 'string' ? location.state.purchaseNotice : ''
   return <div className="space-y-7 [overflow-wrap:anywhere]">{back}
-    <PageHeader eyebrow={`Purchase · ${customer.data.name}`} title="Purchase details" description="A permanent record of the items and prices at the time of purchase. Saved purchases cannot be edited or deleted." actions={<Link to={`/customers/${uuid}/purchases/${record.uuid}/invoice`} className="inline-flex h-10 items-center justify-center rounded-md border border-line bg-white px-4 text-sm font-medium text-ink hover:bg-paper">View invoice</Link>} />
+    <PageHeader eyebrow={`Sale · ${customer.data.name}`} title="Sale details" description="Original items, prices and the current payment balance." actions={<><ActionLink secondary to={`/customers/${uuid}/purchases/${record.uuid}/invoice`}>View invoice</ActionLink>{!customer.data.archived_at && record.outstanding_paise>0 && !['void','refunded'].includes(record.status) && record.currency_code==='INR' ? <ActionLink to={`/receive-payment?customer=${uuid}&sale=${record.uuid}`}>Receive Payment</ActionLink> : null}</>} />
     {notice ? <p className="rounded-md border border-line bg-white px-4 py-3 text-sm text-ink" role="status">{notice}</p> : null}
     <Card><CardHeader><CardTitle>Recorded purchase</CardTitle></CardHeader><CardContent><dl className="space-y-4 text-sm sm:grid sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-x-6 sm:gap-y-4 sm:space-y-0">
       <dt className="text-muted">Purchase UUID</dt><dd className="font-mono text-xs leading-6 text-ink">{record.uuid}</dd>

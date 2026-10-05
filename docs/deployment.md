@@ -1,6 +1,6 @@
 # Deployment runbook — remote actions not yet approved or executed
 
-Verified 5 October 2026. Phases 1–7 are delivered and Phase 8 **local** acceptance/security/recovery passed: 1,073 workerd/D1 tests, 42 real-backend Chromium scenarios, build/typecheck/lint/audit and exact original-data preservation. This does not approve production use. No Cloudflare login/account inspection, remote resource/migration/secret operation, deployment or production smoke was performed.
+Verified 6 October 2026. Phases 1–7 and the Phase 8 baseline are delivered; the mobile-first redesign **local** acceptance/security/recovery passed: 1,099 workerd/D1 tests, 57 real-backend Chromium scenarios, build/typecheck/lint/audit and exact original-data preservation. This does not approve production use. No remote migration, secret operation, deployment or production smoke was performed.
 
 ## Before any remote operation
 
@@ -10,7 +10,7 @@ Verified 5 October 2026. Phases 1–7 are delivered and Phase 8 **local** accept
 - Pass deployed native PBKDF2 CPU measurement and staging acceptance/recovery before production provisioning/deployment.
 - Have the owner confirm shop identity, GSTIN and actual tax/document requirements. Existing local identity is populated; its GSTIN passes the application's broad format but fails a standard GSTIN structure check. It was preserved, not certified or changed. New purchases have no tax engine; there is no legal GST-compliance claim.
 
-The source `wrangler.jsonc` has **no D1 `database_id` or named staging/production bindings**. There is no approved account/origin. The commands below are a proposed gated procedure, not an executable authorization. Ordinary `npm run deploy`, `db:migrate:remote` and `db:export` are remote actions and remain blocked.
+The root `wrangler.jsonc` preserves the local `DB` binding without an ID and the intentional auxiliary `optidesk_staging` binding. It now also contains a reviewable `env.staging` block that explicitly binds application `DB` to the approved staging UUID with `remote:false`, selects Worker `optidesk-staging` and disables preview URLs. This is a local configuration/build target, not a remote migration or deployment. The commands below remain proposed gated remote procedure, not executable authorization. Ordinary `npm run deploy`, `db:migrate:remote` and `db:export` are remote actions and remain blocked.
 
 ## Current public Free-plan constraints
 
@@ -41,13 +41,13 @@ Confirm the account ID, Free plan and shared usage in the account dashboard, inc
 
 ## Gate B — proposed isolated staging
 
-Proposed names for owner confirmation: Worker **`optidesk-staging`**, D1 **`optidesk-staging`**, named environment **`staging`**, free workers.dev origin assigned by the approved account. Using installed Wrangler **4.147.0**, request approval to create only that database:
+The reviewable local target uses Worker **`optidesk-staging`**, D1 **`optidesk-staging`**, named environment **`staging`**, binding **`DB`** and UUID **`5fc6c1c4-c43a-4b59-a606-18fbadc22a5d`**. `npm run build:staging` verified the generated config and demo banner locally. The already-created empty D1 is not migrated. Any future remote command still requires explicit approval:
 
 ```bash
 npx wrangler d1 create optidesk-staging --location=apac --update-config=false
 ```
 
-After approval, explicitly add the returned real ID to `env.staging.d1_databases` (`binding: DB`, approved name, `migrations_dir: migrations`), the approved Worker name/account, SPA/ASSETS configuration and PII-safe observability. D1 bindings are not inherited into named environments. Disable public preview URLs in the approved release configuration. Do not use `e2e/wrangler.jsonc` or fixture UUIDs for deployment; do not permit automatic D1 provisioning.
+If the owner approves remote use, review the exact account and target again before using the checked-in `env.staging` binding. D1 bindings are not inherited into named environments; the local staging block intentionally contains only application `DB` and does not inherit the auxiliary root binding. Wrangler may report that non-inherited root binding as a warning during the local build; this confirms the separation rather than routing app queries to it. Do not use `e2e/wrangler.jsonc` or fixture UUIDs for deployment; do not permit automatic D1 provisioning.
 
 Once the concrete binding/configuration is reviewed, request approval for these staging operations:
 

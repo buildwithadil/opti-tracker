@@ -2,7 +2,7 @@
 
 ## Repository assessment
 
-The requested directory was initially empty apart from harness metadata; it was not then a Git repository. Phases 1–7 are committed through `ea6f27e`. Phase 8 began from that clean checkpoint and completes local final acceptance/security/recovery review; its changes are uncommitted. Original local owner/customer/clinical/financial/invoice/audit/shop data remain identical to the Phase 8 baseline, including all retained Phase 7 live activity. Production bindings are not configured. No remote account inspection, migration, provisioning, deployment or restore has been performed.
+The requested directory was initially empty apart from harness metadata; it was not then a Git repository. Phases 1–7 are committed through `ea6f27e`; the Phase 8 baseline is `e948138`. The current mobile-first redesign is uncommitted review work on `redesign/mobile-first-shop-workflow`. Original local owner/customer/clinical/financial/invoice/audit/shop data remain identical to the redesign baseline, including all retained Phase 7 live activity. Root/local `DB` remains unchanged; a named `staging` build target explicitly binds app `DB` to the existing approved staging UUID with `remote:false`. No remote migration, provisioning, secret operation, deployment or restore has been performed.
 
 ## Deployment unit
 
@@ -156,7 +156,7 @@ React reports reuse the shell, locally owned UI primitives and TanStack Query; f
 7. Reports/exports: exact SQL summaries/current credit, business-date boundaries, complete bounded pagination, authentic CSV/formula/privacy checks, operational dashboard and volume/regression/preservation checks.
 8. Final testing, deployment and production readiness: Phase 1–7 regression/security/asset/query review, all major desktop/mobile routes, complete real workflow, local SQL backup round-trip/session/invoice reconciliation and original-database preservation. Then separately approved Free-plan staging CPU/acceptance/recovery, production bindings/migrations/secrets/bootstrap/deployment and controlled smoke. This final phase adds no business module or broader settings/tax/numbering API.
 
-Each phase ends with a tested change report, outstanding issues and unexecuted staging/commit commands. Phase 8 local checks passed **1,073 workerd/D1 tests in 29 files and 42 real-backend Chromium scenarios**, plus typecheck/lint/build/audit and full private original-data/hash/physical-rowid preservation. Stronger console/resource and seven-route desktop/mobile checks passed in both the focused scenario and complete 42-scenario rerun. Remote staging/production gates remain pending explicit approval. See [Phase 8](phase-eight.md) and [deployment](deployment.md).
+Each phase ends with a tested change report, outstanding issues and unexecuted staging/commit commands. The redesign local checks passed **1,099 workerd/D1 tests in 31 files and 57 real-backend Chromium scenarios**, plus typecheck/lint/build/audit and full private original-data/hash/physical-rowid preservation. Rahul workflow, collection/checkout recovery and all seven required viewports passed against the real local Worker/D1 backend. Remote staging/production gates remain pending explicit approval. See [mobile-first redesign](mobile-first-redesign.md), [Phase 8](phase-eight.md) and [deployment](deployment.md).
 
 ### Final boundary and recovery corrections
 

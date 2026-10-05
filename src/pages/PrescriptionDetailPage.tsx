@@ -44,7 +44,7 @@ export function PrescriptionDetailPage() {
 
   return (
     <div className="space-y-7 [overflow-wrap:anywhere]">
-      <Link to={`/customers/${uuid}`} className="text-sm font-medium text-ink underline underline-offset-4">Back to customer</Link>
+      <Link to={`/customers/${uuid}?tab=prescriptions`} className="text-sm font-medium text-ink underline underline-offset-4">Back to customer</Link>
       <PageHeader eyebrow={`Prescription · ${customerRecord.name}`} title="Prescription details" description={`Version ${record.revision_number} · ${prescriptionTypeLabel(record.prescription_type)}. Each saved version preserves its recorded values.`} actions={canRevise ? <Link to={`${path}/${record.uuid}/revise`} className="inline-flex h-10 items-center justify-center rounded-md bg-ink px-4 text-sm font-medium text-white hover:bg-ink/90">Revise prescription</Link> : undefined} />
       {notice ? <p className="rounded-md border border-line bg-white px-4 py-3 text-sm text-ink" role="status">{notice}</p> : null}
       {customerRecord.archived_at ? <p className="rounded-md border border-line bg-white px-4 py-3 text-sm leading-6 text-muted">This customer is archived. Prescriptions remain readable, but cannot be added or revised until the customer is restored.</p> : null}

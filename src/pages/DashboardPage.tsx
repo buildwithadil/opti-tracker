@@ -1,35 +1,28 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
+import { UserPlus, Wallet } from 'lucide-react'
 import { Button } from '../components/ui/Button'
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
+import { Card, CardContent } from '../components/ui/Card'
 import { PageHeader } from '../components/ui/PageHeader'
 import { ErrorState, LoadingState } from '../components/ui/States'
+import { ActionLink, EmptyState, NewSaleLink } from '../components/ui/ShopUI'
+import { SaleCard } from '../components/SaleCard'
 import { purchaseMoney } from '../lib/purchases'
 import { reportErrorMessage, reportsApi } from '../lib/reports'
+import { shopApi } from '../lib/shop'
+import { invoiceKeys, invoicesApi } from '../lib/invoices'
 
 export function DashboardPage() {
-  const dashboard = useQuery({ queryKey: ['reports', 'dashboard'], queryFn: reportsApi.dashboard, staleTime: 0, retry: false })
-  const data = dashboard.data
-  return <div className="space-y-7">
-    <PageHeader eyebrow="Shop overview" title="Dashboard" description="Today’s business activity and current customer credit, calculated from saved records." actions={<Button variant="secondary" loading={dashboard.isFetching} onClick={() => void dashboard.refetch()}>Refresh overview</Button>} />
-    {dashboard.isPending ? <LoadingState label="Loading shop overview…" /> : dashboard.isError ? <ErrorState title="Overview could not be loaded" description={reportErrorMessage(dashboard.error)} onRetry={() => void dashboard.refetch()} /> : data ? <>
-      <p className="text-sm text-muted">Business day <time>{data.businessDate}</time> · {data.timeZone} (IST). Credit and customer counts include all dates.</p>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {[
-          ['Today’s sales', purchaseMoney(data.sales.total_paise), '/reports?report=sales', 'dashboard-sales'],
-          ['Today’s collections', purchaseMoney(data.payments.total_paise), '/reports?report=payments', 'dashboard-payments'],
-          ['Today’s purchases', String(data.sales.purchase_count), '/reports?report=sales', 'dashboard-purchases'],
-          ['Current outstanding', purchaseMoney(data.outstanding.outstanding_paise), '/reports?report=outstanding', 'dashboard-outstanding'],
-          ['Customers', String(data.customers.customer_count), '/reports?report=customers', 'dashboard-customers'],
-          ['Customers with debt', String(data.outstanding.customer_count), '/reports?report=outstanding', 'dashboard-debtors'],
-        ].map(([label, value, to, id]) => <Card key={id}><CardContent><p className="text-sm text-muted">{label}</p><p className="mt-3 break-words text-2xl font-semibold tracking-tight tabular-nums" data-testid={id}>{value}</p><Link className="mt-4 inline-flex text-sm underline underline-offset-4" to={to}>View report</Link></CardContent></Card>)}
-      </div>
-      <Card><CardHeader><CardTitle>Collections and customer status</CardTitle></CardHeader><CardContent className="space-y-2 text-sm text-muted">
-        <p>Cash {purchaseMoney(data.payments.cash_paise)} · UPI {purchaseMoney(data.payments.upi_paise)} · Card {purchaseMoney(data.payments.card_paise)}</p>
-        {data.payments.legacy_other_paise > 0 ? <p>Other retained legacy methods: {purchaseMoney(data.payments.legacy_other_paise)}</p> : null}
-        <p>{data.customers.active_count} active · {data.customers.archived_count} archived customers</p>
-        <p>Sales include saved purchases even before invoice generation. Collections use payment received time; sales and collections can differ.</p>
-      </CardContent></Card>
-    </> : null}
+  const dashboard=useQuery({ queryKey: ['reports','dashboard'],queryFn: reportsApi.dashboard,staleTime: 0,retry: false })
+  const recent=useQuery({ queryKey: ['shop','recent-sales'],queryFn: ({ signal })=>shopApi.sales({ pageSize: 5 },signal),staleTime: 0,retry: false })
+  const due=useQuery({ queryKey: ['reports','home-outstanding'],queryFn: ({ signal })=>reportsApi.report('outstanding',{ range: null,page: 1,pageSize: 3 },signal),staleTime: 0,retry: false })
+  const identity=useQuery({ queryKey: invoiceKeys.identity,queryFn: ({ signal })=>invoicesApi.identity(signal),staleTime: 0,retry: false })
+  const data=dashboard.data
+  return <div className="space-y-6"><PageHeader eyebrow="Your shop, at a glance" title="Home" description="A good day starts with one clear next step." actions={<Button variant="secondary" size="sm" loading={dashboard.isFetching} onClick={()=>{ void dashboard.refetch(); void recent.refetch(); void due.refetch() }}>Refresh overview</Button>} />
+    {dashboard.isPending ? <LoadingState label="Loading today…" /> : dashboard.isError ? <ErrorState title="Today could not be loaded" description={reportErrorMessage(dashboard.error)} onRetry={()=>void dashboard.refetch()} /> : data ? <><p className="text-sm text-muted">Today · {data.businessDate} · IST</p><div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">{[['Today’s sales',data.sales.total_paise,'/sales','dashboard-sales'],['Collected',data.payments.total_paise,'/payments/history','dashboard-payments'],['Outstanding',data.outstanding.outstanding_paise,'/outstanding','dashboard-outstanding']].map(([label,value,to,id])=><Link key={String(id)} to={String(to)} className={`min-w-0 rounded-2xl border border-line bg-white p-4 sm:p-5 ${id==='dashboard-outstanding' ? 'col-span-2 sm:col-span-1' : ''}`}><p className="text-sm leading-5 text-muted">{label}</p><p data-testid={String(id)} className="mt-2 break-words text-xl font-semibold tabular-nums sm:text-2xl">{purchaseMoney(Number(value))}</p></Link>)}</div><p className="text-sm text-muted"><span data-testid="dashboard-purchases">{data.sales.purchase_count}</span> sales today · <span data-testid="dashboard-customers">{data.customers.customer_count}</span> customers · <span data-testid="dashboard-debtors">{data.outstanding.customer_count}</span> with a balance</p></> : null}
+    <section aria-label="Quick actions" className="space-y-3"><NewSaleLink className="w-full sm:min-h-14" /><div className="grid grid-cols-2 gap-3"><ActionLink secondary to="/customers/new"><UserPlus className="size-5" aria-hidden="true" />Add Customer</ActionLink><ActionLink secondary to="/receive-payment"><Wallet className="size-5" aria-hidden="true" />Receive Payment</ActionLink></div></section>
+    {identity.data && (!identity.data.shop_name.trim() || !identity.data.address.trim() || !identity.data.contact_number.trim()) ? <Card><CardContent className="space-y-3"><h2 className="font-semibold">Make your first invoice ready</h2><p className="text-sm text-muted">Add your shop name, address and contact once. Future invoices use this information.</p><ActionLink secondary to="/settings">Set up shop information</ActionLink></CardContent></Card> : null}
+    <section className="space-y-3"><div className="flex items-center justify-between"><h2 className="text-lg font-semibold">Recent sales</h2><ActionLink secondary to="/sales">All sales</ActionLink></div>{recent.isPending ? <LoadingState label="Loading recent sales…" /> : recent.isError ? <ErrorState description={recent.error.message} onRetry={()=>void recent.refetch()} /> : recent.data.sales.length ? <ul aria-label="Recent sales" className="grid gap-3 md:grid-cols-2">{recent.data.sales.map(sale=><li key={sale.uuid}><SaleCard sale={sale} /></li>)}</ul> : <EmptyState title="Ready for your first sale" description="Your latest sales will appear here. Start with a customer and add their products." action={<NewSaleLink />} />}</section>
+    <section className="space-y-3"><div className="flex items-center justify-between"><h2 className="text-lg font-semibold">Payments to collect</h2><ActionLink secondary to="/outstanding">Outstanding</ActionLink></div>{due.isPending ? <LoadingState label="Loading balances…" /> : due.isError ? <ErrorState description={due.error.message} onRetry={()=>void due.refetch()} /> : due.data.rows.length ? <ul aria-label="Payments to collect" className="space-y-3">{due.data.rows.map(row=><li key={row.customer_uuid}><Card><CardContent className="flex flex-wrap items-center justify-between gap-3"><div className="min-w-0"><p className="break-words font-semibold">{row.customer_name}</p><p className="text-sm text-muted">{purchaseMoney(row.outstanding_paise as number)} due</p></div><ActionLink secondary to={row.customer_status==='Archived' ? `/customers/${row.customer_uuid}` : `/receive-payment?customer=${row.customer_uuid}`}>{row.customer_status==='Archived' ? 'Restore customer' : 'Receive Payment'}</ActionLink></CardContent></Card></li>)}</ul> : <EmptyState title="All caught up" description="No customer balances are outstanding." />}</section>
   </div>
 }

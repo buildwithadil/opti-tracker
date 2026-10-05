@@ -33,7 +33,8 @@ export async function getCustomer(db: D1Database, uuid: string): Promise<Custome
 
 function escapeLike(value: string): string { return value.replace(/[\\%_]/gu, '\\$&') }
 
-export async function listCustomers(db: D1Database, query: CustomerListOptions): Promise<CustomerList> {
+/** Shared allowlisted search/order plan for the legacy list and shop summary view. */
+export function customerListPlan(query: CustomerListOptions) {
   const conditions: string[] = []
   const parameters: (string | number)[] = []
   if (query.status !== 'all') conditions.push(query.status === 'active' ? 'archived_at IS NULL' : 'archived_at IS NOT NULL')
@@ -53,11 +54,16 @@ export async function listCustomers(db: D1Database, query: CustomerListOptions):
   }
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
   const order = query.order === 'asc' ? 'ASC' : 'DESC'
+  return { where, parameters, order: `${sortColumns[query.sort]} ${order},uuid ASC` }
+}
+
+export async function listCustomers(db: D1Database, query: CustomerListOptions): Promise<CustomerList> {
+  const { where, parameters, order } = customerListPlan(query)
   // The only interpolated identifiers/direction are literal allowlisted values.
   // Count and page share the same D1 transaction/snapshot, even during writes.
   const results = await runD1Batch(db, [
     db.prepare(`SELECT ${columns} FROM customers ${where}
-      ORDER BY ${sortColumns[query.sort]} ${order},uuid ASC LIMIT ? OFFSET ?`)
+      ORDER BY ${order} LIMIT ? OFFSET ?`)
       .bind(...parameters, query.pageSize, (query.page - 1) * query.pageSize),
     db.prepare(`SELECT COUNT(*) AS total FROM customers ${where}`).bind(...parameters),
   ])

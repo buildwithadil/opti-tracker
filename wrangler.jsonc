@@ -14,6 +14,12 @@
       "binding": "DB",
       "database_name": "optidesk",
       "migrations_dir": "migrations"
+    },
+    {
+      "binding": "optidesk_staging",
+      "database_name": "optidesk-staging",
+      "database_id": "5fc6c1c4-c43a-4b59-a606-18fbadc22a5d",
+      "remote": true
     }
   ],
   "triggers": { "crons": ["0 19 * * *"] },
@@ -23,5 +29,29 @@
     "redact_query_string": true,
     "logs": { "invocation_logs": false },
     "traces": { "enabled": false }
+  },
+  "env": {
+    "staging": {
+      "name": "optidesk-staging",
+      "workers_dev": true,
+      "preview_urls": false,
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "optidesk-staging",
+          "database_id": "5fc6c1c4-c43a-4b59-a606-18fbadc22a5d",
+          "migrations_dir": "migrations",
+          "remote": false
+        }
+      ],
+      "triggers": { "crons": ["0 19 * * *"] },
+      "observability": {
+        "enabled": true,
+        "head_sampling_rate": 0.1,
+        "redact_query_string": true,
+        "logs": { "invocation_logs": false },
+        "traces": { "enabled": false }
+      }
+    }
   }
 }

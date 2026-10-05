@@ -1,10 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import {
-  BarChart3,
-  CreditCard,
-  FileText,
-  LayoutDashboard,
-  Settings,
+  Home,
+  Ellipsis,
   ShoppingBag,
   Users,
 } from 'lucide-react'
@@ -17,15 +14,10 @@ export type NavigationItem = {
 }
 
 export const primaryNavigation: NavigationItem[] = [
-  { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, end: true },
+  { label: 'Home', to: '/dashboard', icon: Home, end: true },
+  { label: 'Sales', to: '/sales', icon: ShoppingBag },
   { label: 'Customers', to: '/customers', icon: Users },
-  { label: 'Sales & Purchases', to: '/purchases', icon: ShoppingBag },
-  { label: 'Prescriptions', to: '/prescriptions', icon: FileText },
-  { label: 'Payments', to: '/payments', icon: CreditCard },
-  { label: 'Reports', to: '/reports', icon: BarChart3 },
+  { label: 'More', to: '/more', icon: Ellipsis },
 ]
 
-export const utilityNavigation: NavigationItem[] = [
-  { label: 'Settings', to: '/settings', icon: Settings },
-]
-
+export const utilityNavigation: NavigationItem[] = []

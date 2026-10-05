@@ -95,7 +95,7 @@ function PurchaseForm({ customer }: { customer: Customer }) {
     const error = form.getFieldState(name, form.formState).error?.message
     return <Field id={id} label={label} error={error} hint={options.hint}><TextInput id={id} type={options.type ?? 'text'} inputMode={options.inputMode} maxLength={options.maxLength} autoComplete="off" aria-required={options.required || undefined} aria-invalid={!!error} aria-describedby={error ? `${id}-error` : options.hint ? `${id}-hint` : undefined} {...form.register(name)} /></Field>
   }
-  const cancelPath = `/customers/${customer.uuid}`
+  const cancelPath = `/customers/${customer.uuid}?tab=sales`
   return <div className="space-y-7 [overflow-wrap:anywhere]">
     <Link to={cancelPath} className="text-sm font-medium text-ink underline underline-offset-4">Back to customer</Link>
     <PageHeader eyebrow={`Purchase · ${customer.name}`} title="Add purchase" description="Record the items and their original prices. Saved purchases are permanent, read-only records." />
