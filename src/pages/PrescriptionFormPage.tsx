@@ -144,7 +144,7 @@ function PrescriptionForm({ customer, prescription }: { customer: Customer; pres
             <fieldset disabled={pending} className="space-y-6 disabled:opacity-70">
               <legend className="sr-only">Prescription values for {customer.name}</legend>
               <PrescriptionFields form={form} revision={!!prescription} />
-              {savePrescription.isError ? <p className="text-sm leading-6 text-red-700" role="alert">{prescriptionErrorMessage(savePrescription.error)}</p> : null}
+              {savePrescription.isError ? <p className="text-sm leading-6 text-accent" role="alert">{prescriptionErrorMessage(savePrescription.error)}</p> : null}
               <div className="flex flex-wrap gap-3 border-t border-line pt-5">
                 <Button type="submit" loading={pending} disabled={!!prescription && !form.formState.isDirty}>{prescription ? 'Save revision' : 'Save prescription'}</Button>
                 <Button variant="secondary" disabled={pending} onClick={() => navigate(cancelPath)}>Cancel</Button>

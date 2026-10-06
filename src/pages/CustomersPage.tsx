@@ -11,6 +11,7 @@ import { PageHeader } from '../components/ui/PageHeader'
 import { ErrorState, LoadingState } from '../components/ui/States'
 import { customerErrorMessage } from '../lib/customers'
 import { shopApi } from '../lib/shop'
+import { purchaseMoney } from '../lib/purchases'
 
 type ListQuery = Required<CustomerListQuery>
 const selectClass = 'h-11 w-full rounded-[10px] border border-line bg-white px-3 text-sm text-ink'
@@ -64,15 +65,14 @@ function CustomerSearch({ initialValue, onSearch }: { initialValue: string; onSe
         <TextInput id="customer-search" type="search" placeholder="Name or mobile number" maxLength={100} value={value} onChange={(event) => onSearch(event.target.value)} aria-invalid={!!error} aria-describedby={error ? 'customer-search-error' : undefined} />
         <Button type="submit" variant="secondary" className="h-11" icon={<Search className="size-4" aria-hidden="true" />}>Search</Button>
       </div>
-      {error ? <p id="customer-search-error" className="mt-1.5 text-xs text-red-700" role="alert">{error}</p> : null}
+      {error ? <p id="customer-search-error" className="mt-1.5 text-xs text-accent" role="alert">{error}</p> : null}
     </form>
   )
 }
 
 function CustomerTable({ customers }: { customers: ShopCustomer[] }) {
-  return <ul aria-label="Customer search results" className="hairline-list border-y border-line bg-white">
-    {customers.map(customer => <li key={customer.uuid}><Link to={`/customers/${customer.uuid}`} className="touch-row flex items-center gap-4 px-4 sm:px-5"><span className="min-w-0 flex-1"><span className="block break-words font-semibold">{customer.name}</span><span className="mt-1 block text-sm text-muted">{formatIndianMobile(customer.normalized_phone)}</span></span><span aria-hidden="true" className="text-xl leading-none text-subtle">›</span></Link></li>)}
-  </ul>
+  const row = (customer: ShopCustomer) => <div className="relative flex min-w-0 items-center"><Link to={`/customers/${customer.uuid}`} className="touch-row min-w-0 flex-1 px-4 pr-24 sm:px-5" aria-label={customer.name}><span className="min-w-0"><span className="block break-words font-semibold">{customer.name}</span><span className="mt-1 block text-sm text-muted">{formatIndianMobile(customer.normalized_phone)}</span><span className="sr-only">{customer.outstanding_paise === null ? 'Balance needs review' : `${purchaseMoney(customer.outstanding_paise)} outstanding`}</span></span><span aria-hidden="true" className="absolute right-4 text-xl leading-none text-subtle">›</span></Link><Link className="absolute right-4 top-1/2 z-10 -translate-y-1/2 text-sm text-accent opacity-0 focus:opacity-100" to={`/customers/${customer.uuid}`} aria-label={`View ${customer.name}`}>View</Link></div>
+  return <><div role="table" aria-label="Customer search results" className="hidden border-y border-line bg-white md:block">{customers.map(customer => <div role="row" key={customer.uuid}>{row(customer)}</div>)}</div><ul aria-label="Customer search results" className="hairline-list border-y border-line bg-white md:hidden">{customers.map(customer => <li key={customer.uuid}>{row(customer)}</li>)}</ul></>
 }
 
 export function CustomersPage() {
@@ -103,7 +103,7 @@ export function CustomersPage() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
             <CustomerSearch initialValue={params.get('search') ?? ''} onSearch={searchCustomers} />
           </div>
-          <details className="border-y border-line py-2"><summary aria-label="List options" className="min-h-11 cursor-pointer py-2 text-sm font-semibold">List options</summary><div className="mt-3 grid gap-4 pb-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+          <details open className="border-y border-line py-2"><summary aria-label="Sort & list options" onClick={event => event.preventDefault()} className="min-h-11 cursor-pointer py-2 text-sm font-semibold">Sort & list options</summary><div className="mt-3 grid gap-4 pb-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
             <div>
               <label htmlFor="customer-status" className="mb-2 block text-sm font-medium text-ink">Customer status</label>
               <select id="customer-status" className={selectClass} value={query.status} onChange={(event) => updateQuery({ status: event.target.value as ListQuery['status'] })}>

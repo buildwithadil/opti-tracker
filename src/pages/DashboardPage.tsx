@@ -20,7 +20,7 @@ export function DashboardPage() {
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
   return <div className="space-y-8 sm:space-y-10">
-     <PageHeader eyebrow={greeting} title="Home" actions={<Button variant="ghost" size="sm" loading={dashboard.isFetching} onClick={()=>{ void dashboard.refetch(); void recent.refetch(); void due.refetch() }}>Refresh</Button>} />
+     <PageHeader eyebrow={greeting} title="Home" actions={<Button variant="ghost" size="sm" loading={dashboard.isFetching} onClick={()=>{ void dashboard.refetch(); void recent.refetch(); void due.refetch() }}>Refresh overview</Button>} />
     {dashboard.isPending ? <LoadingState label="Loading today…" /> : dashboard.isError ? <ErrorState title="Today could not be loaded" description={reportErrorMessage(dashboard.error)} onRetry={()=>void dashboard.refetch()} /> : data ? <section aria-label="Today" className="space-y-5">
        <div className="border-y border-line py-5"><Link to="/sales" className="block w-fit"><p className="text-sm text-muted">Today’s sales</p><p data-testid="dashboard-sales" className="mt-1 text-[38px] font-semibold tracking-[-0.04em] tabular-nums sm:text-[44px]">{purchaseMoney(data.sales.total_paise)}</p><p className="mt-1 text-xs text-muted"><span data-testid="dashboard-purchases">{data.sales.purchase_count}</span> sales · {new Date(`${data.businessDate}T12:00:00Z`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · IST</p></Link></div>
        <div className="grid grid-cols-2 divide-x divide-line border-b border-line pb-5">

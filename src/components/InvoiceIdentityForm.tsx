@@ -41,7 +41,7 @@ function IdentityForm({ identity, onSaved }: { identity: InvoiceIdentity; onSave
         <Field id="invoice-shop-contact" label="Shop contact number" error={errors.contact_number?.message}><TextInput id="invoice-shop-contact" type="tel" maxLength={32} aria-required="true" aria-invalid={!!errors.contact_number} {...form.register('contact_number')} /></Field>
         <Field id="invoice-shop-gstin" label="GSTIN" error={errors.gstin?.message} hint="Optional. Enter the shop's actual registration number only."><TextInput id="invoice-shop-gstin" maxLength={15} aria-invalid={!!errors.gstin} {...form.register('gstin')} /></Field>
       </fieldset>
-      {save.isError ? <p role="alert" className="text-sm text-red-700">{invoiceErrorMessage(save.error)}</p> : null}
+      {save.isError ? <p role="alert" className="text-sm text-accent">{invoiceErrorMessage(save.error)}</p> : null}
         <Button type="submit" loading={pending}>Save invoice business information</Button>
     </form>
     <ConfirmationDialog open={blocker.state === 'blocked'} title={pending ? 'Save in progress' : 'Discard unsaved changes?'} description={pending ? 'Wait for the business information save to finish.' : 'Your business information changes have not been saved.'} confirmLabel="Discard changes" cancelLabel="Keep editing" pending={pending} danger onCancel={() => { if (blocker.state === 'blocked') blocker.reset() }} onConfirm={() => { if (blocker.state === 'blocked' && !pending) blocker.proceed() }} />

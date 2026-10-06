@@ -38,7 +38,7 @@ function DateFilters({ range, onApply }: { range: ReportRange; onApply: (range: 
       <Field id="report-to" label="End date"><TextInput id="report-to" type="date" required value={draft.dateTo} onChange={event => { setPreset('Custom'); setDraft({ ...draft, dateTo: event.target.value }) }} /></Field>
     </div>
     <div className="flex flex-wrap items-center gap-3"><Button type="submit" variant="secondary">Apply dates</Button><p className="text-xs text-muted">Inclusive dates · {REPORT_TIME_ZONE} (IST) · maximum 366 days</p></div>
-    {error ? <p role="alert" className="text-sm text-red-700">{error}</p> : null}
+    {error ? <p role="alert" className="text-sm text-accent">{error}</p> : null}
   </form>
 }
 function ResultCell({ row, name, column }: { row: ReportRow; name: ReportName; column: string }) {
@@ -85,7 +85,7 @@ export function ReportsPage() {
         downloadLock.current = true; setDownloading(true); setDownloadError('')
         void reportsApi.download(name, query).catch(error => setDownloadError(reportErrorMessage(error))).finally(() => { downloadLock.current = false; setDownloading(false) })
       }}>Download CSV</Button> : null}</div>
-        {downloadError ? <p role="alert" className="px-5 pt-4 text-sm text-red-700">{downloadError}</p> : null}
+        {downloadError ? <p role="alert" className="px-5 pt-4 text-sm text-accent">{downloadError}</p> : null}
         {name !== 'customers' && data.pagination.total > REPORT_EXPORT_ROWS ? <p className="px-5 pt-4 text-sm text-muted">CSV limit: 5,000 rows. Narrow the date range where available or browse the paginated report.</p> : null}
         {data.rows.length ? <Results result={data} /> : <div className="px-5 py-12 text-center"><h3 className="font-semibold">No matching records</h3><p className="mt-2 text-sm text-muted">{activity ? 'Choose different dates to view saved activity.' : 'Saved records will appear here when applicable.'}</p></div>}
         <nav aria-label="Report pagination" className="flex flex-wrap items-center justify-between gap-4 border-t border-line px-5 py-4"><p className="text-xs text-muted">{data.pagination.total} rows · Page {query.page} of {data.pagination.totalPages}</p><div className="flex items-center gap-2"><label htmlFor="report-page-size" className="sr-only">Rows per page</label><select id="report-page-size" className="h-9 rounded-md border border-line bg-white px-2 text-xs" value={query.pageSize} onChange={event => update({ pageSize: event.target.value })}>{Array.from(new Set([10,20,50,query.pageSize])).sort((a,b) => a-b).map(size => <option key={size} value={size}>{size} rows</option>)}</select><Button size="sm" variant="secondary" disabled={query.page <= 1} onClick={() => update({ page: String(query.page-1) })}>Previous</Button><Button size="sm" variant="secondary" disabled={query.page >= Math.min(data.pagination.totalPages,10000)} onClick={() => update({ page: String(query.page+1) })}>Next</Button></div></nav>

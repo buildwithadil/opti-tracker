@@ -43,7 +43,7 @@ export function ConfirmationDialog({
     >
       <h2 id={`${id}-title`} className="text-lg font-semibold">{title}</h2>
       <div id={`${id}-description`} className="mt-3 text-sm leading-6 text-muted">{description}</div>
-      {error ? <p className="mt-4 text-sm leading-6 text-red-700" role="alert">{error}</p> : null}
+      {error ? <p className="mt-4 text-sm leading-6 text-accent" role="alert">{error}</p> : null}
       <div className="mt-6 flex flex-wrap justify-end gap-2">
         <Button autoFocus variant="secondary" disabled={pending} onClick={onCancel}>{cancelLabel}</Button>
         <Button variant={danger ? 'danger' : 'primary'} loading={pending} onClick={onConfirm}>{confirmLabel}</Button>

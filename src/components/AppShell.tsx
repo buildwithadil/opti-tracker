@@ -26,7 +26,7 @@ export function AppShell() {
      <div className="app-content lg:pl-60">
        <header className="shop-topbar flex h-16 items-center justify-between gap-3 border-b border-line bg-white px-4 lg:hidden">{brand}{signOut}</header>
       {import.meta.env.VITE_DEMO_MODE === 'true' ? <p className="demo-banner border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm text-amber-900">Demo workspace · use test customers and sales only</p> : null}
-      {logout.isError ? <p role="alert" className="px-4 py-3 text-sm text-red-700">{logout.error.message}</p> : null}
+       {logout.isError ? <p role="alert" className="px-4 py-3 text-sm text-accent">{logout.error.message}</p> : null}
         <main id="main-content" tabIndex={-1} className="app-main mx-auto w-full max-w-6xl px-4 pb-[calc(112px_+_env(safe-area-inset-bottom))] pt-6 sm:px-6 lg:px-10 lg:py-10"><Outlet /></main>
       </div>
       <nav aria-label="Mobile primary navigation" className="bottom-navigation fixed inset-x-0 bottom-0 z-30 lg:hidden">

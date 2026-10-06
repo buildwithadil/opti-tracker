@@ -80,9 +80,9 @@ function CustomerForm({ customer }: { customer?: Customer }) {
 
   return (
     <div className="max-w-xl space-y-7">
-      <PageHeader eyebrow="Customer" title={customer ? 'Edit customer' : 'Add customer'} description={customer ? undefined : 'Name and mobile number.'} />
+      <PageHeader eyebrow="Customer" title={customer ? 'Edit customer' : 'Add Customer'} description={customer ? undefined : 'Name and mobile number.'} />
       <section className="border-y border-line py-5">
-        {customer?.archived_at ? <p className="mb-5 border-b border-line pb-4 text-sm text-muted">This customer is archived. Saving changes does not restore them.</p> : null}
+        {customer?.archived_at ? <p className="mb-5 border-b border-line pb-4 text-sm text-muted">This customer is archived. You can update contact details here; saving does not restore the profile.</p> : null}
         <form className="space-y-5" noValidate aria-label={customer ? 'Edit customer details' : 'New customer details'} onSubmit={(event) => {
           void form.handleSubmit(async (values) => {
             if (submissionLock.current) return

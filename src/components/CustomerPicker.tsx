@@ -40,6 +40,6 @@ function InlineCustomerForm({ onCreated,onDirtyChange,onPendingChange }: { onCre
   useEffect(() => { if (!pending && focus.current) { form.setFocus(focus.current); focus.current=null } },[pending,save.error,form])
   return <form noValidate aria-label="Add customer in sale" className="space-y-4" onSubmit={event => { void form.handleSubmit(async values => { if (lock.current) return; lock.current=true; try { await save.mutateAsync(values) } catch { /* Keep the draft and focus the server error. */ } finally { lock.current=false } })(event) }}>
     <fieldset disabled={pending} className="space-y-4"><Field id="inline-name" label="Full name" error={form.formState.errors.name?.message}><TextInput id="inline-name" autoFocus autoComplete="name" maxLength={200} aria-invalid={!!form.formState.errors.name} {...form.register('name')} /></Field><Field id="inline-phone" label="Mobile number" error={form.formState.errors.phone?.message}><TextInput id="inline-phone" type="tel" inputMode="tel" autoComplete="tel" maxLength={32} aria-invalid={!!form.formState.errors.phone} {...form.register('phone')} /></Field></fieldset>
-    {save.isError ? <p role="alert" className="text-sm text-red-700">{customerErrorMessage(save.error)}</p> : null}<Button type="submit" loading={pending} className="w-full">Save & Continue</Button>
+    {save.isError ? <p role="alert" className="text-sm text-accent">{customerErrorMessage(save.error)}</p> : null}<Button type="submit" loading={pending} className="w-full">Save & Continue</Button>
   </form>
 }

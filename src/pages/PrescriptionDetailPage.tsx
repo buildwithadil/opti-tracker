@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import type { Prescription } from '../../shared/prescriptions'
 import { PrescriptionHistory, PrescriptionStatus } from '../components/PrescriptionHistory'
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { PageHeader } from '../components/ui/PageHeader'
 import { ErrorState, LoadingState } from '../components/ui/States'
 import { ApiError } from '../lib/api'
@@ -49,9 +48,9 @@ export function PrescriptionDetailPage() {
       {notice ? <p className="rounded-md border border-line bg-white px-4 py-3 text-sm text-ink" role="status">{notice}</p> : null}
       {customerRecord.archived_at ? <p className="rounded-md border border-line bg-white px-4 py-3 text-sm leading-6 text-muted">This customer is archived. Prescriptions remain readable, but cannot be added or revised until the customer is restored.</p> : null}
       {record.prescription_type !== 'spectacle' ? <p className="rounded-md border border-line bg-white px-4 py-3 text-sm leading-6 text-muted">This is a legacy {record.prescription_type === 'contact_lens' ? 'contact lens' : 'other'} record. Its original values are preserved; revisions for this prescription type are not supported in this phase.</p> : null}
-      <Card>
-        <CardHeader><CardTitle>Recorded prescription</CardTitle></CardHeader>
-        <CardContent className="space-y-6">
+      <section className="border-y border-line py-5">
+        <h2 className="text-[19px] font-semibold">Recorded prescription</h2>
+        <div className="mt-5 space-y-6">
           <dl className="space-y-4 text-sm sm:grid sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-x-6 sm:gap-y-4 sm:space-y-0">
             <dt className="text-muted">Status</dt><dd><PrescriptionStatus status={record.status} /></dd>
             <dt className="text-muted">Version</dt><dd className="text-ink">{record.revision_number}</dd>
@@ -66,34 +65,34 @@ export function PrescriptionDetailPage() {
           </dl>
           <div className="grid gap-5 md:grid-cols-2"><EyeDetails record={record} eye="right" /><EyeDetails record={record} eye="left" /></div>
           <p className="text-xs leading-5 text-muted">Blank source measurements are shown as unknown. Values are not interpreted, transposed, or calculated.</p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader><CardTitle>Pupillary distance (PD)</CardTitle></CardHeader>
-        <CardContent>
+        </div>
+      </section>
+      <section className="border-y border-line py-5">
+        <h2 className="text-[19px] font-semibold">Pupillary distance (PD)</h2>
+        <div className="mt-5">
           <dl className="space-y-4 text-sm sm:grid sm:grid-cols-[12rem_minmax(0,1fr)] sm:gap-x-6 sm:gap-y-4 sm:space-y-0">
             <dt className="text-muted">Distance PD (mm)</dt><dd className="text-ink [overflow-wrap:anywhere]">{prescriptionMeasurement(record.distance_pd, ' mm')}</dd>
             <dt className="text-muted">Near PD (mm)</dt><dd className="text-ink [overflow-wrap:anywhere]">{prescriptionMeasurement(record.near_pd, ' mm')}</dd>
             <dt className="text-muted">Right monocular PD (mm)</dt><dd className="text-ink [overflow-wrap:anywhere]">{prescriptionMeasurement(record.right_pd, ' mm')}</dd>
             <dt className="text-muted">Left monocular PD (mm)</dt><dd className="text-ink [overflow-wrap:anywhere]">{prescriptionMeasurement(record.left_pd, ' mm')}</dd>
           </dl>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader><CardTitle>Prescription notes</CardTitle></CardHeader>
-        <CardContent><p className="whitespace-pre-wrap text-sm leading-6 text-muted [overflow-wrap:anywhere]">{record.notes ?? 'No prescription notes recorded.'}</p></CardContent>
-      </Card>
-      <Card>
-        <CardHeader><CardTitle>Version links</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
+        </div>
+      </section>
+      <section className="border-y border-line py-5">
+        <h2 className="text-[19px] font-semibold">Prescription notes</h2>
+        <div className="mt-5"><p className="whitespace-pre-wrap text-sm leading-6 text-muted [overflow-wrap:anywhere]">{record.notes ?? 'No prescription notes recorded.'}</p></div>
+      </section>
+      <section className="border-y border-line py-5">
+        <h2 className="text-[19px] font-semibold">Version links</h2>
+        <div className="mt-5 space-y-4">
           <p className="text-sm leading-6 text-muted">A revision creates a replacement record. Previous values are never overwritten.</p>
           <div className="flex flex-wrap gap-x-5 gap-y-3 text-sm">
             {record.supersedes_uuid ? <Link to={`${path}/${record.supersedes_uuid}`} className="font-medium text-ink underline underline-offset-4">View previous version</Link> : <span className="text-muted">This is the original version.</span>}
             {record.superseded_by_uuid ? <Link to={`${path}/${record.superseded_by_uuid}`} className="font-medium text-ink underline underline-offset-4">View replacement version</Link> : null}
             {record.root_uuid !== record.uuid ? <Link to={`${path}/${record.root_uuid}`} className="font-medium text-ink underline underline-offset-4">View original prescription</Link> : null}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
       <PrescriptionHistory key={`${uuid}:${record.root_uuid}`} customer={customerRecord} prescription={record} />
     </div>
   )

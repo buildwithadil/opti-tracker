@@ -79,7 +79,7 @@ export function SettingsPage() {
               <Field id="password-confirmation" label="Confirm new password" error={errors.confirmation?.message}>
                 <TextInput id="password-confirmation" type="password" autoComplete="new-password" maxLength={256} aria-invalid={!!errors.confirmation} aria-describedby={errors.confirmation ? 'password-confirmation-error' : undefined} {...form.register('confirmation')} />
               </Field>
-              {changePassword.isError ? <p className="text-sm text-red-700" role="alert">{changePassword.error instanceof Error ? changePassword.error.message : 'Your password could not be changed.'}</p> : null}
+              {changePassword.isError ? <p className="text-sm text-accent" role="alert">{changePassword.error instanceof Error ? changePassword.error.message : 'Your password could not be changed.'}</p> : null}
               <Button type="submit" loading={changePassword.isPending}>Change password and sign out</Button>
             </fieldset>
           </form>
