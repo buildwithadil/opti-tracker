@@ -22,7 +22,7 @@ export function TextInput({ className, ...props }: InputHTMLAttributes<HTMLInput
   return (
     <input
       className={cn(
-        'h-11 min-w-0 w-full rounded-[10px] border border-line bg-white px-3 text-base text-ink shadow-none placeholder:text-muted disabled:cursor-not-allowed disabled:opacity-60 aria-invalid:border-red-700',
+        'h-11 min-w-0 w-full rounded-[10px] border border-line bg-white px-3 text-base text-ink shadow-none placeholder:text-subtle transition-[border-color,box-shadow] duration-150 disabled:cursor-not-allowed disabled:opacity-60 aria-invalid:border-accent',
         className,
       )}
       {...props}
