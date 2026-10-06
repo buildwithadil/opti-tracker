@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Glasses, LogOut, Plus } from 'lucide-react'
+import { Glasses, LogOut } from 'lucide-react'
 import { ApiError, authApi, clearCsrfToken } from '../lib/api'
 import { cn } from '../lib/utils'
 import { primaryNavigation, type NavigationItem } from '../lib/navigation'
@@ -9,7 +9,7 @@ import { NewSaleLink } from './ui/ShopUI'
 
 function NavigationLink({ item, mobile = false }: { item: NavigationItem; mobile?: boolean }) {
   const Icon = item.icon
-  return <NavLink to={item.to} end={item.end} className={({ isActive }) => cn(mobile ? 'flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 px-1 text-[11px]' : 'flex min-h-11 items-center gap-3 rounded-[10px] px-3 text-sm', isActive ? mobile ? 'font-semibold text-accent' : 'bg-accent/8 font-semibold text-accent' : 'text-muted hover:bg-paper')}><Icon className={cn('size-5 shrink-0', mobile && 'size-[19px]')} aria-hidden="true" /><span>{item.label}</span></NavLink>
+  return <NavLink to={item.to} end={item.end} className={({ isActive }) => cn(mobile ? 'flex min-h-16 min-w-0 flex-col items-center justify-center gap-1 px-1 text-[11px]' : 'flex min-h-11 items-center gap-3 rounded-[10px] px-3 text-sm', isActive ? mobile ? 'font-semibold text-accent' : 'bg-accent-tint font-semibold text-accent' : 'text-muted hover:bg-paper')}><Icon className={cn('size-5 shrink-0', mobile && 'size-[19px]')} aria-hidden="true" /><span>{item.label}</span></NavLink>
 }
 export function AppShell() {
   const client = useQueryClient(), navigate = useNavigate()
@@ -22,17 +22,16 @@ export function AppShell() {
   const signOut = <Button variant="ghost" size="sm" className="shrink-0 whitespace-nowrap" loading={logout.isPending} onClick={() => logout.mutate()} icon={<LogOut className="size-4" aria-hidden="true" />}>Sign out</Button>
   return <div className="app-shell min-h-screen bg-paper">
     <a href="#main-content" className="sr-only z-50 rounded-md bg-white px-4 py-3 text-sm focus:not-sr-only focus:fixed focus:left-3 focus:top-3">Skip to main content</a>
-     <aside className="fixed inset-y-0 left-0 hidden w-60 flex-col border-r border-line bg-white px-4 py-5 lg:flex">{brand}<div className="mt-9"><NewSaleLink className="w-full" /></div><nav aria-label="Primary navigation" className="mt-7 space-y-1">{primaryNavigation.map(item => <NavigationLink key={item.to} item={item} />)}</nav><div className="mt-auto border-t border-line pt-5"><p className="truncate text-sm font-medium">{owner?.name}</p><p className="mb-3 truncate text-xs text-muted">{owner?.email}</p>{signOut}</div></aside>
+      <aside className="fixed inset-y-0 left-0 hidden w-60 flex-col border-r border-line bg-white px-4 py-5 lg:flex">{brand}<div className="mt-9"><NewSaleLink className="floating-action w-full" /></div><nav aria-label="Primary navigation" className="mt-7 space-y-1">{primaryNavigation.map(item => <NavigationLink key={item.to} item={item} />)}</nav><div className="mt-auto border-t border-line pt-5"><p className="truncate text-sm font-medium">{owner?.name}</p><p className="mb-3 truncate text-xs text-muted">{owner?.email}</p>{signOut}</div></aside>
      <div className="app-content lg:pl-60">
        <header className="shop-topbar flex h-16 items-center justify-between gap-3 border-b border-line bg-white px-4 lg:hidden">{brand}{signOut}</header>
       {import.meta.env.VITE_DEMO_MODE === 'true' ? <p className="demo-banner border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm text-amber-900">Demo workspace · use test customers and sales only</p> : null}
       {logout.isError ? <p role="alert" className="px-4 py-3 text-sm text-red-700">{logout.error.message}</p> : null}
-       <main id="main-content" tabIndex={-1} className="app-main mx-auto w-full max-w-6xl px-4 pb-[calc(100px_+_env(safe-area-inset-bottom))] pt-6 sm:px-6 lg:px-10 lg:py-10"><Outlet /></main>
-    </div>
-     <nav aria-label="Mobile primary navigation" className="bottom-navigation fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-line bg-white/95 backdrop-blur lg:hidden">
-      {primaryNavigation.slice(0,2).map(item => <NavigationLink key={item.to} item={item} mobile />)}
-       <NavLink to="/sales/new" aria-label="New Sale" className="flex min-h-16 flex-col items-center justify-center gap-1 px-1 text-[11px] font-semibold text-accent"><span className="flex size-10 items-center justify-center rounded-[11px] bg-accent text-white shadow-sm"><Plus className="size-5" aria-hidden="true" /></span><span>New Sale</span></NavLink>
-      {primaryNavigation.slice(2).map(item => <NavigationLink key={item.to} item={item} mobile />)}
-    </nav>
+        <main id="main-content" tabIndex={-1} className="app-main mx-auto w-full max-w-6xl px-4 pb-[calc(112px_+_env(safe-area-inset-bottom))] pt-6 sm:px-6 lg:px-10 lg:py-10"><Outlet /></main>
+      </div>
+      <nav aria-label="Mobile primary navigation" className="bottom-navigation fixed inset-x-0 bottom-0 z-30 lg:hidden">
+       <div className="pointer-events-none absolute inset-x-0 bottom-[calc(64px_+_env(safe-area-inset-bottom))] flex justify-center"><NewSaleLink aria-label="New Sale" className="pointer-events-auto floating-action rounded-full px-5 shadow-lg" /></div>
+       <div className="glass-bar grid grid-cols-4 border-x-0 border-b-0 px-2"><NavigationLink item={primaryNavigation[0]} mobile /><NavigationLink item={primaryNavigation[1]} mobile /><NavigationLink item={primaryNavigation[2]} mobile /><NavigationLink item={primaryNavigation[3]} mobile /></div>
+      </nav>
   </div>
 }
