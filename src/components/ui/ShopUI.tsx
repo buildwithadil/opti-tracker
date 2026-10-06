@@ -8,8 +8,8 @@ export const actionClass = 'inline-flex min-h-11 max-w-full items-center justify
 export function ActionLink({ secondary, quiet, className, ...props }: LinkProps & { secondary?: boolean; quiet?: boolean }) {
   return <Link className={cn(quiet ? 'text-action' : actionClass, !quiet && secondary && 'border border-line bg-transparent text-ink hover:bg-line/40', className)} {...props} />
 }
-export function NewSaleLink({ customer, className }: { customer?: string; className?: string }) {
-  return <ActionLink to={customer ? `/sales/new?customer=${customer}` : '/sales/new'} className={className}><Plus className="size-5" aria-hidden="true" />New sale</ActionLink>
+export function NewSaleLink({ customer, className, ...props }: Omit<LinkProps, 'to'> & { customer?: string; className?: string }) {
+  return <ActionLink {...props} to={customer ? `/sales/new?customer=${customer}` : '/sales/new'} className={className}><Plus className="size-5" aria-hidden="true" />New Sale</ActionLink>
 }
 export function EmptyState({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
   return <div className="border-y border-line px-5 py-10 text-center"><h2 className="font-semibold">{title}</h2><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted">{description}</p>{action ? <div className="mt-5">{action}</div> : null}</div>
