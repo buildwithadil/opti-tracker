@@ -30,7 +30,7 @@ export function AppShell() {
         <main id="main-content" tabIndex={-1} className="app-main mx-auto w-full max-w-6xl px-4 pb-[calc(112px_+_env(safe-area-inset-bottom))] pt-6 sm:px-6 lg:px-10 lg:py-10"><Outlet /></main>
       </div>
       <nav aria-label="Mobile primary navigation" className="bottom-navigation fixed inset-x-0 bottom-0 z-30 lg:hidden">
-       <div className="pointer-events-none absolute inset-x-0 bottom-[calc(64px_+_env(safe-area-inset-bottom))] flex justify-center"><NewSaleLink aria-label="New Sale" className="pointer-events-auto floating-action rounded-full px-5 shadow-lg" /></div>
+       <div className="mobile-new-sale pointer-events-none"><NewSaleLink aria-label="New Sale" className="mobile-new-sale-link pointer-events-auto" /></div>
        <div className="glass-bar grid grid-cols-4 border-x-0 border-b-0 px-2"><NavigationLink item={primaryNavigation[0]} mobile /><NavigationLink item={primaryNavigation[1]} mobile /><NavigationLink item={primaryNavigation[2]} mobile /><NavigationLink item={primaryNavigation[3]} mobile /></div>
       </nav>
   </div>
