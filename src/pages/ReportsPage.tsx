@@ -5,7 +5,6 @@ import { Download } from 'lucide-react'
 import { REPORT_EXPORT_ROWS, reportLabels, reportNames, type ReportName, type ReportResult, type ReportRow } from '../../shared/reports'
 import { REPORT_TIME_ZONE, reportPresetRange, reportPresets, reportRangeSchema, type ReportPreset, type ReportRange } from '../../shared/reportDates'
 import { Button } from '../components/ui/Button'
-import { Card, CardContent } from '../components/ui/Card'
 import { Field, TextInput } from '../components/ui/Field'
 import { PageHeader } from '../components/ui/PageHeader'
 import { ErrorState, LoadingState } from '../components/ui/States'
@@ -73,15 +72,15 @@ export function ReportsPage() {
       const next = new URLSearchParams(params); next.set('page',String(lastPage)); setParams(next,{ replace: true })
     }
   },[report.isSuccess,query.page,lastPage,params,setParams])
-  return <div className="space-y-7">
+    return <div className="space-y-7">
     <PageHeader title="Reports" description="Sales, collections, balances, and exports." actions={<Button variant="ghost" loading={report.isFetching} disabled={activity && !validRange.success} onClick={() => void report.refetch()}>Refresh</Button>} />
-    <Card><CardContent className="space-y-5"><Field id="report-kind" label="Report"><select id="report-kind" className={selectClass} value={name} onChange={event => update({ report: event.target.value })}>{reportNames.map(value => <option key={value} value={value}>{reportLabels[value]}</option>)}</select></Field>
+     <section className="space-y-5 border-y border-line py-5"><Field id="report-kind" label="Report"><select id="report-kind" className={selectClass} value={name} onChange={event => update({ report: event.target.value })}>{reportNames.map(value => <option key={value} value={value}>{reportLabels[value]}</option>)}</select></Field>
       {activity ? <DateFilters key={`${range.dateFrom}-${range.dateTo}`} range={range} onApply={value => update(value)} /> : <p className="text-sm leading-6 text-muted">Current position across all dates. Archived customers retain their debts; fully paid and zero-total purchases are excluded from outstanding credit. Date filters do not apply to this report.</p>}
-    </CardContent></Card>
+     </section>
     {activity && !validRange.success ? <ErrorState title="Check the report dates" description={validRange.error.issues[0].message} /> : report.isPending ? <LoadingState label="Loading report…" /> : report.isError ? <ErrorState title="Report could not be loaded" description={reportErrorMessage(report.error)} onRetry={() => void report.refetch()} /> : data ? <>
-      <section aria-label="Report summary"><h2 className="mb-3 text-base font-semibold">{reportLabels[name]} summary</h2><Card><CardContent><dl className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">{Object.entries(data.summary).map(([key, value]) => <div key={key}><dt className="text-xs text-muted">{name === 'payments' && key === 'total_paise' ? 'Collections' : name === 'sales' && key === 'outstanding_paise' ? 'Outstanding to date' : summaryLabels[key] ?? key}</dt><dd data-testid={`report-${key}`} className="mt-1 break-words text-lg font-semibold tabular-nums">{money(key, value)}</dd></div>)}</dl></CardContent></Card></section>
+       <section aria-label="Report summary"><h2 className="mb-3 text-base font-semibold">{reportLabels[name]} summary</h2><dl className="grid gap-5 border-y border-line py-5 sm:grid-cols-2 xl:grid-cols-4">{Object.entries(data.summary).map(([key, value]) => <div key={key}><dt className="text-xs text-muted">{name === 'payments' && key === 'total_paise' ? 'Collections' : name === 'sales' && key === 'outstanding_paise' ? 'Outstanding to date' : summaryLabels[key] ?? key}</dt><dd data-testid={`report-${key}`} className="mt-1 break-words text-lg font-semibold tabular-nums">{money(key, value)}</dd></div>)}</dl></section>
       <p className="text-xs text-muted">{activity ? `Dates use ${REPORT_TIME_ZONE} (IST).` : 'Current balances across all saved records.'}</p>
-      <Card><div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4"><h2 className="text-sm font-semibold">{reportLabels[name]} details</h2>{name !== 'customers' ? <Button size="sm" variant="secondary" loading={downloading} disabled={data.pagination.total > REPORT_EXPORT_ROWS} icon={<Download className="size-4" aria-hidden="true" />} onClick={() => {
+       <section className="border-y border-line bg-white"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-4 sm:px-5"><h2 className="text-sm font-semibold">{reportLabels[name]} details</h2>{name !== 'customers' ? <Button size="sm" variant="secondary" loading={downloading} disabled={data.pagination.total > REPORT_EXPORT_ROWS} icon={<Download className="size-4" aria-hidden="true" />} onClick={() => {
         if (downloadLock.current) return
         downloadLock.current = true; setDownloading(true); setDownloadError('')
         void reportsApi.download(name, query).catch(error => setDownloadError(reportErrorMessage(error))).finally(() => { downloadLock.current = false; setDownloading(false) })
@@ -91,8 +90,8 @@ export function ReportsPage() {
         {data.rows.length ? <Results result={data} /> : <div className="px-5 py-12 text-center"><h3 className="font-semibold">No matching records</h3><p className="mt-2 text-sm text-muted">{activity ? 'Choose different dates to view saved activity.' : 'Saved records will appear here when applicable.'}</p></div>}
         <nav aria-label="Report pagination" className="flex flex-wrap items-center justify-between gap-4 border-t border-line px-5 py-4"><p className="text-xs text-muted">{data.pagination.total} rows · Page {query.page} of {data.pagination.totalPages}</p><div className="flex items-center gap-2"><label htmlFor="report-page-size" className="sr-only">Rows per page</label><select id="report-page-size" className="h-9 rounded-md border border-line bg-white px-2 text-xs" value={query.pageSize} onChange={event => update({ pageSize: event.target.value })}>{Array.from(new Set([10,20,50,query.pageSize])).sort((a,b) => a-b).map(size => <option key={size} value={size}>{size} rows</option>)}</select><Button size="sm" variant="secondary" disabled={query.page <= 1} onClick={() => update({ page: String(query.page-1) })}>Previous</Button><Button size="sm" variant="secondary" disabled={query.page >= Math.min(data.pagination.totalPages,10000)} onClick={() => update({ page: String(query.page+1) })}>Next</Button></div></nav>
         {data.pagination.totalPages>10000 ? <p className="px-5 pb-4 text-xs text-muted">The first 10,000 pages are available. Narrow the date range where applicable.</p> : null}
-      </Card>
-      {data.daily?.length ? <Card><CardContent><h2 className="mb-4 text-sm font-semibold">Collections by business day (IST)</h2><ul className="divide-y divide-line">{data.daily.map(row => <li key={row.business_date} className="flex flex-wrap justify-between gap-2 py-3 text-sm"><span>{row.business_date} · {row.payment_count} transactions</span><span className="font-medium tabular-nums">{purchaseMoney(row.total_paise as number)}</span></li>)}</ul></CardContent></Card> : null}
+       </section>
+       {data.daily?.length ? <section className="border-y border-line py-5"><h2 className="mb-4 text-sm font-semibold">Collections by business day (IST)</h2><ul className="divide-y divide-line">{data.daily.map(row => <li key={row.business_date} className="flex flex-wrap justify-between gap-2 py-3 text-sm"><span>{row.business_date} · {row.payment_count} transactions</span><span className="font-medium tabular-nums">{purchaseMoney(row.total_paise as number)}</span></li>)}</ul></section> : null}
     </> : null}
   </div>
 }

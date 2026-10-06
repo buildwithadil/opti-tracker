@@ -7,7 +7,6 @@ import type { InvoiceIdentity } from '../../shared/invoices'
 import { invoiceIdentitySchema, type InvoiceIdentityInput } from '../../shared/invoiceValidation'
 import { invoiceErrorMessage, invoiceKeys, invoicesApi } from '../lib/invoices'
 import { Button } from './ui/Button'
-import { Card, CardContent, CardHeader, CardTitle } from './ui/Card'
 import { Field, TextInput } from './ui/Field'
 import { ErrorState, LoadingState } from './ui/States'
 import { ConfirmationDialog } from './ui/ConfirmationDialog'
@@ -15,10 +14,10 @@ import { ConfirmationDialog } from './ui/ConfirmationDialog'
 export function InvoiceIdentityForm() {
   const [notice, setNotice] = useState('')
   const identity = useQuery({ queryKey: invoiceKeys.identity, queryFn: ({ signal }) => invoicesApi.identity(signal), retry: false })
-  return <Card className="max-w-3xl"><CardHeader><CardTitle>Invoice business information</CardTitle></CardHeader><CardContent>
+  return <section className="max-w-3xl border-y border-line py-5"><h2 className="text-[19px] font-semibold">Shop information</h2><div className="mt-4">
     {notice ? <p role="status" className="mb-5 text-sm text-ink">{notice}</p> : null}
     {identity.isPending ? <LoadingState label="Loading invoice business information…" /> : identity.isError ? <ErrorState description={invoiceErrorMessage(identity.error)} onRetry={() => void identity.refetch()} /> : <IdentityForm key={identity.data.updated_at} identity={identity.data} onSaved={() => setNotice('Invoice business information saved.')} />}
-  </CardContent></Card>
+  </div></section>
 }
 function IdentityForm({ identity, onSaved }: { identity: InvoiceIdentity; onSaved: () => void }) {
   const client = useQueryClient(), lock = useRef(false)

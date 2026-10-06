@@ -6,7 +6,6 @@ import { z } from 'zod'
 import { authApi, clearCsrfToken } from '../lib/api'
 import { newPasswordSchema } from '../lib/authValidation'
 import { Button } from '../components/ui/Button'
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { Field, TextInput } from '../components/ui/Field'
 import { ErrorState, LoadingState } from '../components/ui/States'
 import { PageHeader } from '../components/ui/PageHeader'
@@ -46,10 +45,10 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-7">
-      <PageHeader title="Settings" description="Shop information and account security." />
-      <Card>
-        <CardHeader><CardTitle>Shop and administrator</CardTitle></CardHeader>
-        <CardContent>
+      <PageHeader title="Settings" />
+      <section className="border-y border-line py-5">
+        <h2 className="text-[19px] font-semibold">Account</h2>
+        <div className="mt-4">
           {identity.isPending ? <LoadingState label="Loading shop identity…" /> : null}
           {identity.isError ? <ErrorState description={identity.error instanceof Error ? identity.error.message : 'The shop identity could not be loaded.'} onRetry={() => void identity.refetch()} /> : null}
           {identity.isSuccess ? (
@@ -61,13 +60,13 @@ export function SettingsPage() {
               </dl>
             </>
           ) : null}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
       <InvoiceIdentityForm />
-      <Card>
-        <CardHeader><CardTitle>Change password</CardTitle></CardHeader>
-        <CardContent>
-          <p id="password-change-description" className="mb-5 max-w-xl text-sm leading-6 text-muted">Use a password of 12–256 characters. Changing the password signs out all sessions, including this one.</p>
+      <section className="border-y border-line py-5">
+        <h2 className="text-[19px] font-semibold">Password</h2>
+        <div className="mt-4">
+          <p id="password-change-description" className="mb-5 max-w-xl text-sm leading-6 text-muted">Changing the password signs out all sessions.</p>
           <form className="max-w-md space-y-4" aria-describedby="password-change-description" onSubmit={form.handleSubmit((values) => changePassword.mutate(values))} noValidate>
             <fieldset className="space-y-4 disabled:opacity-70" disabled={changePassword.isPending}>
               <legend className="sr-only">Change administrator password</legend>
@@ -84,8 +83,8 @@ export function SettingsPage() {
               <Button type="submit" loading={changePassword.isPending}>Change password and sign out</Button>
             </fieldset>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
     </div>
   )
 }
