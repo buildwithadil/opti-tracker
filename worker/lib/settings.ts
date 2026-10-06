@@ -17,13 +17,16 @@ export const SETTING_DEFAULTS: Record<string, { value: string; valueType: string
   business_state: { value: '', valueType: 'string' },
 }
 
-export async function ensureSettings(db: D1Database, adminId: string): Promise<void> {
-  const statements = Object.entries(SETTING_DEFAULTS).map(([key, setting]) => db.prepare(`
+export function settingStatements(db: D1Database, adminId: string): D1PreparedStatement[] {
+  return Object.entries(SETTING_DEFAULTS).map(([key, setting]) => db.prepare(`
     INSERT INTO settings (id, setting_key, setting_value, value_type, created_by_admin_id, updated_by_admin_id)
     SELECT ?, ?, ?, ?, ?, ?
     WHERE NOT EXISTS (SELECT 1 FROM settings WHERE setting_key = ? AND deleted_at IS NULL)
   `).bind(newId(), key, setting.value, setting.valueType, adminId, adminId, key))
-  await db.batch(statements)
+}
+
+export async function ensureSettings(db: D1Database, adminId: string): Promise<void> {
+  await db.batch(settingStatements(db, adminId))
 }
 
 export async function readSettings(db: D1Database): Promise<Record<string, string>> {

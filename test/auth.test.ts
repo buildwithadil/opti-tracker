@@ -61,6 +61,7 @@ describe('owner bootstrap and identity', () => {
     expect(await count('admin_users')).toBe(1)
     expect(await count('sessions')).toBe(1)
     expect(await count('shop_settings')).toBe(1)
+    expect(await count('settings')).toBe(12)
     expect(await count('audit_logs')).toBe(1)
   })
 

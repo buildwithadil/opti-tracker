@@ -8,6 +8,7 @@ import { readJson } from '../lib/request.js'
 import { changePasswordSchema, loginSchema, setupSchema } from '../validators/auth.js'
 import { throttle } from '../services/rate-limit.js'
 import { apiSuccess, sendResponse } from '../lib/api.js'
+import { settingStatements } from '../lib/settings.js'
 
 export type RouteFunction = (req: RequestWithAuth, res: BlazeResponse) => Promise<void>
 export type RegisterRoute = (handler: RouteFunction) => import('blazefw').Handler<Env>
@@ -50,6 +51,7 @@ export function registerAuth(app: BlazeApp<Env>, route: RegisterRoute): void {
       await req.env.DB.batch([
         req.env.DB.prepare(`INSERT INTO admin_users(id,email,display_name,password_hash) VALUES (?,?,?,?)`).bind(adminId, input.email, input.name, passwordHash),
         req.env.DB.prepare('INSERT INTO shop_settings(uuid) VALUES (?)').bind(crypto.randomUUID()),
+        ...settingStatements(req.env.DB, adminId),
         req.env.DB.prepare(`INSERT INTO audit_logs(id,actor_admin_user_id,action,entity_type,entity_id,after_json,request_id) VALUES (?,?,'create','admin_user',?,?,?)`)
           .bind(crypto.randomUUID(), adminId, adminId, JSON.stringify({ email: input.email, name: input.name }), req.id),
         session.statement,
