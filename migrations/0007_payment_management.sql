@@ -37,35 +37,35 @@ BEGIN SELECT RAISE(ABORT, 'payments are immutable'); END;
 -- Check duplicate keys FIRST: a retry after full settlement is still a duplicate.
 CREATE TRIGGER payments_creation_insert BEFORE INSERT ON payments
 BEGIN
-  SELECT CASE WHEN EXISTS(SELECT 1 FROM payments WHERE id = NEW.id)
-    THEN RAISE(ABORT, 'payments are immutable') END;
-  SELECT CASE WHEN NEW.client_request_id IS NOT NULL AND EXISTS(
+  SELECT (CASE WHEN EXISTS(SELECT 1 FROM payments WHERE id = NEW.id)
+    THEN RAISE(ABORT, 'payments are immutable') END);
+  SELECT (CASE WHEN NEW.client_request_id IS NOT NULL AND EXISTS(
     SELECT 1 FROM payments WHERE customer_id = NEW.customer_id AND client_request_id = NEW.client_request_id)
-    THEN RAISE(ABORT, 'duplicate payment submission') END;
-  SELECT CASE WHEN NEW.customer_id IS NULL OR NOT EXISTS(
+    THEN RAISE(ABORT, 'duplicate payment submission') END);
+  SELECT (CASE WHEN NEW.customer_id IS NULL OR NOT EXISTS(
     SELECT 1 FROM purchases WHERE id = NEW.purchase_id AND customer_id = NEW.customer_id)
-    THEN RAISE(ABORT, 'payment customer must match the purchase') END;
-  SELECT CASE WHEN typeof(NEW.amount_paise) <> 'integer' OR NEW.amount_paise <= 0 OR NEW.amount_paise > 9007199254740991
+    THEN RAISE(ABORT, 'payment customer must match the purchase') END);
+  SELECT (CASE WHEN typeof(NEW.amount_paise) <> 'integer' OR NEW.amount_paise <= 0 OR NEW.amount_paise > 9007199254740991
     OR NEW.payment_method NOT IN ('cash','upi','card') OR NEW.status <> 'settled' OR NEW.deleted_at IS NOT NULL
     OR NEW.client_request_id IS NULL OR length(NEW.client_request_id) <> 36
     OR NEW.creation_audit_id IS NULL OR NEW.created_by_admin_id IS NULL
     OR EXISTS(SELECT 1 FROM audit_logs WHERE id = NEW.creation_audit_id)
-    THEN RAISE(ABORT, 'invalid payment creation shape') END;
-  SELECT CASE WHEN NOT EXISTS(SELECT 1 FROM customers WHERE uuid = NEW.customer_id AND archived_at IS NULL)
-    THEN RAISE(ABORT, 'payment customer is archived') END;
-  SELECT CASE WHEN EXISTS(SELECT 1 FROM purchases WHERE id = NEW.purchase_id
+    THEN RAISE(ABORT, 'invalid payment creation shape') END);
+  SELECT (CASE WHEN NOT EXISTS(SELECT 1 FROM customers WHERE uuid = NEW.customer_id AND archived_at IS NULL)
+    THEN RAISE(ABORT, 'payment customer is archived') END);
+  SELECT (CASE WHEN EXISTS(SELECT 1 FROM purchases WHERE id = NEW.purchase_id
     AND (deleted_at IS NOT NULL OR status IN ('void','refunded') OR currency_code <> 'INR'))
-    THEN RAISE(ABORT, 'purchase cannot receive payments') END;
-  SELECT CASE WHEN length(NEW.received_at) <> 24 OR substr(NEW.received_at,1,4) < '0001'
+    THEN RAISE(ABORT, 'purchase cannot receive payments') END);
+  SELECT (CASE WHEN length(NEW.received_at) <> 24 OR substr(NEW.received_at,1,4) < '0001'
     OR strftime('%Y-%m-%dT%H:%M:%fZ',NEW.received_at,'+0 seconds') IS NOT NEW.received_at
     OR NEW.received_at > strftime('%Y-%m-%dT%H:%M:%fZ','now')
     OR NEW.received_at < (SELECT COALESCE(purchase_date,substr(created_at,1,10)) || 'T00:00:00.000Z' FROM purchases WHERE id = NEW.purchase_id)
-    THEN RAISE(ABORT, 'invalid payment date') END;
-  SELECT CASE WHEN EXISTS(SELECT 1 FROM purchase_payment_balances WHERE purchase_uuid = NEW.purchase_id
+    THEN RAISE(ABORT, 'invalid payment date') END);
+  SELECT (CASE WHEN EXISTS(SELECT 1 FROM purchase_payment_balances WHERE purchase_uuid = NEW.purchase_id
     AND (invalid_payment = 1 OR legacy_reversal = 1 OR amount_paid_paise > total_paise OR typeof(total_paise) <> 'integer' OR total_paise > 9007199254740991))
-    THEN RAISE(ABORT, 'invalid existing payment balance') END;
-  SELECT CASE WHEN NEW.amount_paise > (SELECT outstanding_paise FROM purchase_payment_balances WHERE purchase_uuid = NEW.purchase_id)
-    THEN RAISE(ABORT, 'payment exceeds outstanding balance') END;
+    THEN RAISE(ABORT, 'invalid existing payment balance') END);
+  SELECT (CASE WHEN NEW.amount_paise > (SELECT outstanding_paise FROM purchase_payment_balances WHERE purchase_uuid = NEW.purchase_id)
+    THEN RAISE(ABORT, 'payment exceeds outstanding balance') END);
 END;
 
 CREATE TRIGGER payments_create_audit_integrity BEFORE INSERT ON audit_logs

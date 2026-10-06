@@ -60,26 +60,26 @@ CREATE TRIGGER invoice_reservations_immutable_delete BEFORE DELETE ON invoice_nu
 BEGIN SELECT RAISE(ABORT,'invoice number reservations are immutable'); END;
 CREATE TRIGGER invoice_reservations_insert BEFORE INSERT ON invoice_number_reservations
 BEGIN
-  SELECT CASE WHEN EXISTS(SELECT 1 FROM invoice_number_reservations WHERE uuid=NEW.uuid OR invoice_number=NEW.invoice_number
+  SELECT (CASE WHEN EXISTS(SELECT 1 FROM invoice_number_reservations WHERE uuid=NEW.uuid OR invoice_number=NEW.invoice_number
       OR sequence_number=NEW.sequence_number OR (customer_uuid=NEW.customer_uuid AND client_request_id=NEW.client_request_id))
-    THEN RAISE(ABORT,'invoice number reservation already exists') END;
-  SELECT CASE WHEN EXISTS(SELECT 1 FROM purchases WHERE invoice_number=NEW.invoice_number)
-    THEN RAISE(ABORT,'invoice number conflicts with legacy invoice; reconcile sequence') END;
-  SELECT CASE WHEN NOT EXISTS(SELECT 1 FROM purchases AS p JOIN customers AS c ON c.uuid=p.customer_id
+    THEN RAISE(ABORT,'invoice number reservation already exists') END);
+  SELECT (CASE WHEN EXISTS(SELECT 1 FROM purchases WHERE invoice_number=NEW.invoice_number)
+    THEN RAISE(ABORT,'invoice number conflicts with legacy invoice; reconcile sequence') END);
+  SELECT (CASE WHEN NOT EXISTS(SELECT 1 FROM purchases AS p JOIN customers AS c ON c.uuid=p.customer_id
     WHERE p.id=NEW.purchase_uuid AND c.uuid=NEW.customer_uuid AND c.archived_at IS NULL
       AND p.deleted_at IS NULL AND p.status NOT IN ('void','refunded') AND p.currency_code='INR'
       AND p.invoice_number IS NULL)
-    THEN RAISE(ABORT,'purchase cannot receive an invoice') END;
-  SELECT CASE WHEN NOT EXISTS(SELECT 1 FROM shop_settings WHERE uuid=NEW.shop_uuid AND singleton_slot=1
+    THEN RAISE(ABORT,'purchase cannot receive an invoice') END);
+  SELECT (CASE WHEN NOT EXISTS(SELECT 1 FROM shop_settings WHERE uuid=NEW.shop_uuid AND singleton_slot=1
     AND length(trim(shop_name)) BETWEEN 1 AND 200 AND length(trim(address)) BETWEEN 1 AND 2000
     AND length(trim(contact_number)) BETWEEN 1 AND 32 AND length(footer_text)<=2000
     AND invoice_reset_policy='never' AND length(invoice_prefix) BETWEEN 1 AND 20
     AND invoice_prefix NOT GLOB '*[^A-Z0-9-]*'
     AND next_invoice_number=NEW.sequence_number
     AND NEW.invoice_number=invoice_prefix || '-' || printf('%0*d',invoice_number_padding,next_invoice_number))
-    THEN RAISE(ABORT,'invoice shop configuration or sequence is invalid') END;
-  SELECT CASE WHEN length(NEW.client_request_id)<>36 OR EXISTS(SELECT 1 FROM audit_logs WHERE id=NEW.creation_audit_id)
-    THEN RAISE(ABORT,'invoice reservation requires a new audit') END;
+    THEN RAISE(ABORT,'invoice shop configuration or sequence is invalid') END);
+  SELECT (CASE WHEN length(NEW.client_request_id)<>36 OR EXISTS(SELECT 1 FROM audit_logs WHERE id=NEW.creation_audit_id)
+    THEN RAISE(ABORT,'invoice reservation requires a new audit') END);
 END;
 CREATE TRIGGER invoice_reservations_advance AFTER INSERT ON invoice_number_reservations
 BEGIN UPDATE shop_settings SET next_invoice_number=NEW.sequence_number+1 WHERE uuid=NEW.shop_uuid; END;
@@ -97,20 +97,20 @@ CREATE TRIGGER invoices_immutable_delete BEFORE DELETE ON invoices
 BEGIN SELECT RAISE(ABORT,'invoices are immutable'); END;
 CREATE TRIGGER invoices_insert BEFORE INSERT ON invoices
 BEGIN
-  SELECT CASE WHEN EXISTS(SELECT 1 FROM invoices WHERE uuid=NEW.uuid OR purchase_uuid=NEW.purchase_uuid
+  SELECT (CASE WHEN EXISTS(SELECT 1 FROM invoices WHERE uuid=NEW.uuid OR purchase_uuid=NEW.purchase_uuid
     OR invoice_number=NEW.invoice_number OR reservation_uuid=NEW.reservation_uuid)
-    THEN RAISE(ABORT,'invoice already exists') END;
-  SELECT CASE WHEN NOT EXISTS(SELECT 1 FROM invoice_number_reservations AS r JOIN audit_logs AS a ON a.id=r.creation_audit_id
+    THEN RAISE(ABORT,'invoice already exists') END);
+  SELECT (CASE WHEN NOT EXISTS(SELECT 1 FROM invoice_number_reservations AS r JOIN audit_logs AS a ON a.id=r.creation_audit_id
     JOIN purchases AS p ON p.id=r.purchase_uuid JOIN customers AS c ON c.uuid=p.customer_id
     WHERE r.uuid=NEW.reservation_uuid AND r.purchase_uuid=NEW.purchase_uuid AND r.customer_uuid=NEW.customer_uuid
       AND r.invoice_number=NEW.invoice_number AND r.created_by_admin_id=NEW.created_by_admin_id
       AND c.archived_at IS NULL AND p.deleted_at IS NULL AND p.status NOT IN ('void','refunded') AND p.currency_code='INR')
-    THEN RAISE(ABORT,'invalid invoice reservation or purchase') END;
-  SELECT CASE WHEN NEW.snapshot_json IS NOT (SELECT snapshot_json FROM invoice_source_snapshots WHERE purchase_uuid=NEW.purchase_uuid AND customer_uuid=NEW.customer_uuid)
+    THEN RAISE(ABORT,'invalid invoice reservation or purchase') END);
+  SELECT (CASE WHEN NEW.snapshot_json IS NOT (SELECT snapshot_json FROM invoice_source_snapshots WHERE purchase_uuid=NEW.purchase_uuid AND customer_uuid=NEW.customer_uuid)
     OR EXISTS(SELECT 1 FROM audit_logs WHERE id=NEW.creation_audit_id)
     OR strftime('%Y-%m-%dT%H:%M:%fZ',NEW.issued_at,'+0 seconds') IS NOT NEW.issued_at
-    THEN RAISE(ABORT,'invalid invoice snapshot or creation audit') END;
-  SELECT CASE WHEN EXISTS(SELECT 1 FROM purchase_payment_balances WHERE purchase_uuid=NEW.purchase_uuid
+    THEN RAISE(ABORT,'invalid invoice snapshot or creation audit') END);
+  SELECT (CASE WHEN EXISTS(SELECT 1 FROM purchase_payment_balances WHERE purchase_uuid=NEW.purchase_uuid
       AND (invalid_payment OR legacy_reversal OR outstanding_paise<0))
     OR json_array_length(NEW.snapshot_json,'$.items') NOT BETWEEN 1 AND 100
     OR EXISTS(SELECT 1 FROM purchase_items WHERE purchase_id=NEW.purchase_uuid AND deleted_at IS NOT NULL)
@@ -118,7 +118,7 @@ BEGIN
       'tax_paise','cgst_paise','sgst_paise','igst_paise','total_paise','unit_price_paise','line_total_paise','taxable_paise',
       'amount_paid_paise','outstanding_paise','amount_paise','quantity','tax_rate_basis_points','payment_count')
       AND (type<>'integer' OR atom<0 OR atom>9007199254740991))
-    THEN RAISE(ABORT,'invalid invoice financial data') END;
+    THEN RAISE(ABORT,'invalid invoice financial data') END);
 END;
 CREATE TRIGGER invoice_audit_integrity BEFORE INSERT ON audit_logs
 WHEN (EXISTS(SELECT 1 FROM invoices WHERE creation_audit_id=NEW.id) AND NOT EXISTS(
