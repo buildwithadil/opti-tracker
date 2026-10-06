@@ -6,7 +6,6 @@ import { useForm } from 'react-hook-form'
 import type { Customer } from '../../shared/customers'
 import type { Prescription } from '../../shared/prescriptions'
 import { Button } from '../components/ui/Button'
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { ConfirmationDialog } from '../components/ui/ConfirmationDialog'
 import { PrescriptionFields } from '../components/PrescriptionFields'
 import { PageHeader } from '../components/ui/PageHeader'
@@ -128,10 +127,10 @@ function PrescriptionForm({ customer, prescription }: { customer: Customer; pres
     <div className="space-y-7 [overflow-wrap:anywhere]">
       <Link to={cancelPath} className="text-sm font-medium text-ink underline underline-offset-4">{prescription ? 'Back to prescription' : 'Back to customer'}</Link>
       <PageHeader eyebrow={`Prescription · ${customer.name}`} title={prescription ? 'Revise prescription' : 'Add prescription'} description={prescription ? `Create a replacement for version ${prescription.revision_number}. Previous values stay in history.` : 'Enter the supplied values exactly. Blank means unknown.'} />
-      <Card className="max-w-4xl">
-          <CardHeader><CardTitle>{prescription ? 'Replacement values' : 'Spectacle prescription'}</CardTitle></CardHeader>
-        <CardContent>
-          {prescription ? <p className="mb-5 rounded-md border border-line bg-paper p-3 text-sm leading-6 text-muted">Saving a revision creates a new version, not an edit to this record. Enter a reason for the replacement. Legacy incomplete or noncanonical values must be transcribed into valid fields before saving.</p> : null}
+      <section className="max-w-4xl border-y border-line py-5">
+          <h2 className="text-[19px] font-semibold">{prescription ? 'Replacement values' : 'Spectacle prescription'}</h2>
+        <div className="mt-5">
+          {prescription ? <p className="mb-5 border-b border-line pb-4 text-sm text-muted">Saving a revision creates a new version. Enter a reason for the replacement.</p> : null}
           <form className="space-y-6" noValidate aria-label={prescription ? 'Revise prescription' : 'New prescription'} onSubmit={event => {
             void form.handleSubmit(async values => {
               if (submissionLock.current) return
@@ -152,9 +151,9 @@ function PrescriptionForm({ customer, prescription }: { customer: Customer; pres
               </div>
             </fieldset>
           </form>
-          <p className="mt-5 text-xs leading-5 text-muted">Values are recorded as entered, with at most two decimal places for powers and PDs. There is no strength recommendation, transposition, rounding, or inferred measurement.</p>
-        </CardContent>
-      </Card>
+          <p className="mt-5 text-xs leading-5 text-muted">Values are recorded exactly as entered. Nothing is calculated or inferred.</p>
+        </div>
+      </section>
       <ConfirmationDialog open={blocker.state === 'blocked'} title={pending ? 'Save in progress' : 'Discard unsaved changes?'} description={pending ? 'Wait for the prescription save to finish before leaving this page.' : 'Your changes have not been saved. Leaving this page will discard them.'} confirmLabel="Discard changes" cancelLabel="Keep editing" danger pending={pending} onCancel={() => { if (blocker.state === 'blocked') blocker.reset() }} onConfirm={() => { if (blocker.state === 'blocked' && !pending) blocker.proceed() }} />
     </div>
   )

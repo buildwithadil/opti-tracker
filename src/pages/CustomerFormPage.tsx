@@ -6,7 +6,6 @@ import { useForm } from 'react-hook-form'
 import type { Customer, CustomerInput } from '../../shared/customers'
 import { formatIndianMobile } from '../../shared/phone'
 import { Button } from '../components/ui/Button'
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { ConfirmationDialog } from '../components/ui/ConfirmationDialog'
 import { Field, TextInput } from '../components/ui/Field'
 import { PageHeader } from '../components/ui/PageHeader'
@@ -80,48 +79,29 @@ function CustomerForm({ customer }: { customer?: Customer }) {
   const cancelPath = customer ? `/customers/${customer.uuid}` : '/customers'
 
   return (
-    <div className="space-y-7">
-      <PageHeader eyebrow="Customer" title={customer ? 'Edit customer' : 'Add Customer'} description={customer ? 'Keep their name and phone number up to date.' : 'Save a name and phone number to get started.'} />
-      <Card className="max-w-2xl">
-        <CardHeader><CardTitle>{customer ? 'Customer details' : 'Contact details'}</CardTitle></CardHeader>
-        <CardContent>
-          {customer?.archived_at ? <p className="mb-5 rounded-md border border-line bg-paper p-3 text-sm leading-6 text-muted">This customer is archived. You can update contact details here; saving does not restore the profile.</p> : null}
-          <form
-            className="space-y-5"
-            noValidate
-            aria-label={customer ? 'Edit customer details' : 'New customer details'}
-            onSubmit={(event) => {
-              void form.handleSubmit(async (values) => {
-                if (submissionLock.current) return
-                submissionLock.current = true
-                saveCustomer.reset()
-                try {
-                  await saveCustomer.mutateAsync(values)
-                } catch {
-                  // Field errors and the mutation alert retain the form for correction.
-                } finally {
-                  submissionLock.current = false
-                }
-              })(event)
-            }}
-          >
-            <fieldset className="space-y-5 disabled:opacity-70" disabled={pending}>
-              <legend className="sr-only">Customer contact information</legend>
-              <Field id="customer-name" label="Full name" error={errors.name?.message}>
-                <TextInput id="customer-name" autoComplete="name" maxLength={200} aria-required="true" aria-invalid={!!errors.name} aria-describedby={errors.name ? 'customer-name-error' : 'customer-name-hint'} {...form.register('name')} />
-              </Field>
-              <Field id="customer-phone" label="Mobile number" error={errors.phone?.message}>
-                <TextInput id="customer-phone" type="tel" inputMode="tel" autoComplete="tel" maxLength={32} aria-required="true" aria-invalid={!!errors.phone} aria-describedby={errors.phone ? 'customer-phone-error' : 'customer-phone-hint'} {...form.register('phone')} />
-              </Field>
-              {saveCustomer.isError ? <p className="text-sm leading-6 text-red-700" role="alert">{customerErrorMessage(saveCustomer.error)}</p> : null}
-              <div className="flex flex-wrap gap-3 border-t border-line pt-5">
-                <Button type="submit" loading={pending} disabled={!!customer && !form.formState.isDirty}>{customer ? 'Save changes' : 'Save customer'}</Button>
-                <Button variant="secondary" disabled={pending} onClick={() => navigate(cancelPath)}>Cancel</Button>
-              </div>
-            </fieldset>
-          </form>
-        </CardContent>
-      </Card>
+    <div className="max-w-xl space-y-7">
+      <PageHeader eyebrow="Customer" title={customer ? 'Edit customer' : 'Add customer'} description={customer ? undefined : 'Name and mobile number.'} />
+      <section className="border-y border-line py-5">
+        {customer?.archived_at ? <p className="mb-5 border-b border-line pb-4 text-sm text-muted">This customer is archived. Saving changes does not restore them.</p> : null}
+        <form className="space-y-5" noValidate aria-label={customer ? 'Edit customer details' : 'New customer details'} onSubmit={(event) => {
+          void form.handleSubmit(async (values) => {
+            if (submissionLock.current) return
+            submissionLock.current = true
+            saveCustomer.reset()
+            try { await saveCustomer.mutateAsync(values) }
+            catch { /* Field errors and the mutation alert retain the form for correction. */ }
+            finally { submissionLock.current = false }
+          })(event)
+        }}>
+          <fieldset className="space-y-5 disabled:opacity-70" disabled={pending}>
+            <legend className="sr-only">Customer contact information</legend>
+            <Field id="customer-name" label="Full name" error={errors.name?.message}><TextInput id="customer-name" autoComplete="name" maxLength={200} aria-required="true" aria-invalid={!!errors.name} aria-describedby={errors.name ? 'customer-name-error' : 'customer-name-hint'} {...form.register('name')} /></Field>
+            <Field id="customer-phone" label="Mobile number" error={errors.phone?.message}><TextInput id="customer-phone" type="tel" inputMode="tel" autoComplete="tel" maxLength={32} aria-required="true" aria-invalid={!!errors.phone} aria-describedby={errors.phone ? 'customer-phone-error' : 'customer-phone-hint'} {...form.register('phone')} /></Field>
+            {saveCustomer.isError ? <p className="text-sm leading-6 text-accent" role="alert">{customerErrorMessage(saveCustomer.error)}</p> : null}
+            <div className="flex flex-wrap gap-3 border-t border-line pt-5"><Button type="submit" loading={pending} disabled={!!customer && !form.formState.isDirty}>{customer ? 'Save changes' : 'Save customer'}</Button><Button variant="secondary" disabled={pending} onClick={() => navigate(cancelPath)}>Cancel</Button></div>
+          </fieldset>
+        </form>
+      </section>
       <ConfirmationDialog
         open={blocker.state === 'blocked'}
         title={pending ? 'Save in progress' : 'Discard unsaved changes?'}

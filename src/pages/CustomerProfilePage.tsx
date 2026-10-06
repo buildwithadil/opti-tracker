@@ -10,13 +10,11 @@ import { ShopPaymentHistory } from '../components/ShopPaymentHistory'
 import { ActionLink, NewSaleLink, Tabs } from '../components/ui/ShopUI'
 import { refreshShop } from '../lib/shop'
 import { Button } from '../components/ui/Button'
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card'
 import { ConfirmationDialog } from '../components/ui/ConfirmationDialog'
 import { PageHeader } from '../components/ui/PageHeader'
 import { ErrorState, LoadingState } from '../components/ui/States'
 import { ApiError } from '../lib/api'
 import { customerDate, customerErrorMessage, customerKeys, customersApi } from '../lib/customers'
-import { CustomerStatus } from './CustomersPage'
 
 type CustomerAction = 'archive' | 'restore'
 
@@ -57,38 +55,14 @@ export function CustomerProfilePage() {
   return (
     <div className="space-y-8">
       <Link to="/customers" className="inline-flex items-center gap-2 rounded-sm text-sm font-medium text-muted hover:text-ink"><ArrowLeft className="size-4" aria-hidden="true" />Back to customers</Link>
-      <PageHeader
-        eyebrow="Customer"
-        title={record.name}
-        description={formatIndianMobile(record.normalized_phone)}
-        actions={
-          <>
-            <Link to={`/customers/${record.uuid}/edit`} className="inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-line bg-white px-4 text-sm font-medium text-ink hover:bg-paper"><Pencil className="size-4" aria-hidden="true" />Edit customer</Link>
-            <Button variant="secondary" disabled={changeStatus.isPending} icon={archived ? <RotateCcw className="size-4" aria-hidden="true" /> : <Archive className="size-4" aria-hidden="true" />} onClick={() => { changeStatus.reset(); setConfirmation(archived ? 'restore' : 'archive') }}>{archived ? 'Restore customer' : 'Archive customer'}</Button>
-          </>
-        }
-      />
+      <PageHeader eyebrow="Customer" title={record.name} description={formatIndianMobile(record.normalized_phone)} />
       {notice || routeNotice ? <p className="rounded-md border border-line bg-white px-4 py-3 text-sm text-ink" role="status">{notice || routeNotice}</p> : null}
-      {!archived ? <div className="grid grid-cols-2 gap-2 sm:max-w-md"><NewSaleLink customer={record.uuid} /><ActionLink secondary to={`/receive-payment?customer=${record.uuid}`}>Receive payment</ActionLink></div> : null}
-      <section aria-label="Customer balance" className="border-y border-line bg-white px-5 py-5 sm:px-7"><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm text-muted">Outstanding</p><CustomerCredit key={`credit:${record.uuid}`} customerUuid={record.uuid} /></div><div className="text-right text-sm text-muted"><p>Customer since</p><p className="mt-1 text-ink"><time dateTime={record.created_at}>{customerDate(record.created_at)}</time></p></div></div></section>
+      {!archived ? <div className="flex flex-wrap gap-2"><NewSaleLink customer={record.uuid} /><ActionLink secondary to={`/receive-payment?customer=${record.uuid}`}>Receive payment</ActionLink></div> : null}
+      <div className="flex flex-wrap gap-4 border-y border-line py-4"><Link to={`/customers/${record.uuid}/edit`} className="text-sm font-medium text-accent underline-offset-4 hover:underline"><Pencil className="mr-1 inline size-4" aria-hidden="true" />Edit customer</Link><Button variant="ghost" size="sm" disabled={changeStatus.isPending} icon={archived ? <RotateCcw className="size-4" aria-hidden="true" /> : <Archive className="size-4" aria-hidden="true" />} onClick={() => { changeStatus.reset(); setConfirmation(archived ? 'restore' : 'archive') }}>{archived ? 'Restore customer' : 'Archive customer'}</Button></div>
+      <section aria-label="Customer overview" className="border-y border-line py-5"><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm text-muted">Outstanding</p><CustomerCredit key={`credit:${record.uuid}`} customerUuid={record.uuid} /></div><div className="text-right text-sm text-muted"><p>Last activity</p><p className="mt-1 text-ink"><time dateTime={record.updated_at}>{customerDate(record.updated_at)}</time></p></div></div></section>
       <Tabs tabs={tabs} value={tab} label="Customer sections" panelId="customer-panel" onChange={value=>setParams({ tab: value.toLowerCase() },{ replace: true })} />
       <section id="customer-panel" role="tabpanel" aria-label={tab} tabIndex={0} className="space-y-5">
-      {tab==='Overview' ? <>
-      <Card className="border-y border-x-0 rounded-none shadow-none">
-        <CardHeader><CardTitle>Customer details</CardTitle></CardHeader>
-        <CardContent>
-          <dl className="space-y-5 text-sm sm:grid sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-x-6 sm:gap-y-5 sm:space-y-0">
-            <dt className="text-muted">Full name</dt><dd className="font-medium text-ink [overflow-wrap:anywhere]">{record.name}</dd>
-            <dt className="text-muted">Mobile number</dt><dd className="font-medium text-ink"><a className="rounded-sm underline underline-offset-4 hover:no-underline" href={`tel:${record.normalized_phone}`}>{formatIndianMobile(record.normalized_phone)}</a></dd>
-            <dt className="text-muted">Status</dt><dd><CustomerStatus archived={archived} /></dd>
-            <dt className="text-muted">Registration date</dt><dd className="text-ink"><time dateTime={record.created_at}>{customerDate(record.created_at, true)}</time></dd>
-            <dt className="text-muted">Last updated</dt><dd className="text-ink"><time dateTime={record.updated_at}>{customerDate(record.updated_at, true)}</time></dd>
-            {record.archived_at ? <><dt className="text-muted">Archived</dt><dd className="text-ink"><time dateTime={record.archived_at}>{customerDate(record.archived_at, true)}</time></dd></> : null}
-          </dl>
-          {archived ? <p className="mt-6 border-t border-line pt-5 text-sm leading-6 text-muted">This customer is archived and excluded from the active list. The record has not been deleted. You may edit details or restore it when needed.</p> : null}
-        </CardContent>
-      </Card>
-      </> : tab==='Prescriptions' ? <PrescriptionHistory key={record.uuid} customer={record} /> : tab==='Sales' ? <PurchaseHistory key={`purchases:${record.uuid}`} customer={record} /> : <ShopPaymentHistory key={`payments:${record.uuid}`} customer={record.uuid} />}
+       {tab==='Overview' ? <section className="space-y-4"><h2 className="text-[19px] font-semibold">Overview</h2><dl className="border-y border-line py-4 text-sm"><div className="flex items-center justify-between gap-4 py-2"><dt className="text-muted">Name</dt><dd className="font-medium text-right [overflow-wrap:anywhere]">{record.name}</dd></div><div className="flex items-center justify-between gap-4 py-2"><dt className="text-muted">Mobile</dt><dd className="font-medium text-right"><a className="underline underline-offset-4 hover:no-underline" href={`tel:${record.normalized_phone}`}>{formatIndianMobile(record.normalized_phone)}</a></dd></div></dl>{archived ? <p className="text-sm text-muted">This customer is archived. Restore them before starting a sale or receiving payment.</p> : null}</section> : tab==='Prescriptions' ? <PrescriptionHistory key={record.uuid} customer={record} /> : tab==='Sales' ? <PurchaseHistory key={`purchases:${record.uuid}`} customer={record} /> : <ShopPaymentHistory key={`payments:${record.uuid}`} customer={record.uuid} />}
       </section>
       <ConfirmationDialog
         open={confirmation !== null}

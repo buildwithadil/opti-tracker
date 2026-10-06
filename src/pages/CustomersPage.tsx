@@ -11,8 +11,6 @@ import { PageHeader } from '../components/ui/PageHeader'
 import { ErrorState, LoadingState } from '../components/ui/States'
 import { customerErrorMessage } from '../lib/customers'
 import { shopApi } from '../lib/shop'
-import { purchaseMoney } from '../lib/purchases'
-import { ActionLink } from '../components/ui/ShopUI'
 
 type ListQuery = Required<CustomerListQuery>
 const selectClass = 'h-11 w-full rounded-[10px] border border-line bg-white px-3 text-sm text-ink'
@@ -72,49 +70,9 @@ function CustomerSearch({ initialValue, onSearch }: { initialValue: string; onSe
 }
 
 function CustomerTable({ customers }: { customers: ShopCustomer[] }) {
-  return (
-    <>
-      <div className="hidden overflow-x-auto md:block">
-        <table className="w-full text-left text-sm">
-          <caption className="sr-only">Customer search results</caption>
-          <thead className="border-b border-line bg-paper text-xs text-muted">
-            <tr>
-              <th scope="col" className="px-5 py-3 font-medium">Customer</th>
-              <th scope="col" className="px-4 py-3 font-medium">Phone</th>
-              <th scope="col" className="px-4 py-3 font-medium">Status</th>
-              <th scope="col" className="px-4 py-3 font-medium">Outstanding</th>
-              <th scope="col" className="px-5 py-3 text-right font-medium"> </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line">
-            {customers.map((customer) => (
-              <tr key={customer.uuid} className="hover:bg-paper/70">
-                <th scope="row" className="max-w-72 px-5 py-4 font-medium text-ink">
-                  <Link className="rounded-sm underline-offset-4 hover:underline [overflow-wrap:anywhere]" to={`/customers/${customer.uuid}`}>{customer.name}</Link>
-                </th>
-                <td className="whitespace-nowrap px-4 py-4 text-muted">{formatIndianMobile(customer.normalized_phone)}</td>
-                <td className="px-4 py-4"><CustomerStatus archived={!!customer.archived_at} /></td>
-                <td className="px-4 py-4 font-semibold tabular-nums">{customer.outstanding_paise===null ? 'Review needed' : purchaseMoney(customer.outstanding_paise)}</td>
-                <td className="px-5 py-4 text-right"><ActionLink secondary to={`/customers/${customer.uuid}`} aria-label={`View ${customer.name}`}>View</ActionLink></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <ul className="divide-y divide-line md:hidden" aria-label="Customer search results">
-        {customers.map((customer) => (
-           <li key={customer.uuid} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4">
-             <div className="flex items-start justify-between gap-3">
-               <Link className="min-w-0 rounded-sm text-sm font-semibold text-ink underline-offset-4 hover:underline [overflow-wrap:anywhere]" to={`/customers/${customer.uuid}`}>{customer.name}</Link>
-               <CustomerStatus archived={!!customer.archived_at} />
-             </div>
-            <p className="w-full text-sm text-muted">{formatIndianMobile(customer.normalized_phone)} · {customer.outstanding_paise===null ? 'Review needed' : customer.outstanding_paise > 0 ? <><strong className="tabular-nums text-ink">{purchaseMoney(customer.outstanding_paise)}</strong> due</> : <>Paid · {purchaseMoney(0)}</>}</p>
-            <ActionLink quiet className="ml-auto" to={`/customers/${customer.uuid}`} aria-label={`View ${customer.name}`}>View customer →</ActionLink>
-          </li>
-        ))}
-      </ul>
-    </>
-  )
+  return <ul aria-label="Customer search results" className="hairline-list border-y border-line bg-white">
+    {customers.map(customer => <li key={customer.uuid}><Link to={`/customers/${customer.uuid}`} className="touch-row flex items-center gap-4 px-4 sm:px-5"><span className="min-w-0 flex-1"><span className="block break-words font-semibold">{customer.name}</span><span className="mt-1 block text-sm text-muted">{formatIndianMobile(customer.normalized_phone)}</span></span><span aria-hidden="true" className="text-xl leading-none text-subtle">›</span></Link></li>)}
+  </ul>
 }
 
 export function CustomersPage() {
@@ -140,18 +98,18 @@ export function CustomersPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Customers" description="Find a customer, check their balance, or start a sale." actions={<Link aria-label="Add Customer" className={primaryLinkClass} to="/customers/new"><Plus className="size-4" aria-hidden="true" />Add customer</Link>} />
+      <PageHeader title="Customers" actions={<Link aria-label="Add Customer" className={primaryLinkClass} to="/customers/new"><Plus className="size-4" aria-hidden="true" />Add customer</Link>} />
       <section className="space-y-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
             <CustomerSearch initialValue={params.get('search') ?? ''} onSearch={searchCustomers} />
-            <div className="sm:w-44">
+          </div>
+          <details className="border-y border-line py-2"><summary aria-label="List options" className="min-h-11 cursor-pointer py-2 text-sm font-semibold">List options</summary><div className="mt-3 grid gap-4 pb-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+            <div>
               <label htmlFor="customer-status" className="mb-2 block text-sm font-medium text-ink">Customer status</label>
               <select id="customer-status" className={selectClass} value={query.status} onChange={(event) => updateQuery({ status: event.target.value as ListQuery['status'] })}>
                 <option value="active">Active</option><option value="archived">Archived</option><option value="all">All</option>
               </select>
             </div>
-          </div>
-          <details className="border-y border-line py-2"><summary aria-label="Sort & list options" className="min-h-11 cursor-pointer py-2 text-sm font-semibold">Sort & list options</summary><div className="mt-3 grid gap-4 pb-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_8rem]">
             <div>
               <label htmlFor="customer-sort" className="mb-2 block text-sm font-medium text-ink">Sort by</label>
               <select id="customer-sort" className={selectClass} value={query.sort} onChange={(event) => updateQuery({ sort: event.target.value as ListQuery['sort'] })}>
